@@ -48,8 +48,12 @@ def e(tree: AST) -> float:
             return e(l) ** e(r)
         case BinOp("<", l, r):
             return float(e(l) < e(r))
+        case BinOp("<=", l, r):
+            return float(e(l) <= e(r))
         case BinOp(">", l, r):
             return float(e(l) > e(r))
+        case BinOp(">=", l, r):
+            return float(e(l) >= e(r))
         case BinOp("==", l, r):
             return float(e(l) == e(r))
         case BinOp("!=", l, r):
@@ -101,7 +105,7 @@ def lex(s: str) -> Iterator[Token]:
         elif s[i].isdigit() :
             t = s[i]
             i += 1
-            has_decimal=True
+            has_decimal = False
             while i < len(s) and (s[i].isdigit() or (s[i] == '.' and not has_decimal)):
                 if s[i] == '.':
                     has_decimal = True
@@ -158,7 +162,7 @@ def parse(s: str) -> AST:
         ast = parse_sub()
         while True:
             match t.peek(None):
-                case OperatorToken(op) if op in {"<", ">", "==", "!="}:
+                case OperatorToken(op) if op in {"<", ">", "==", "!=", "<=", ">="}:
                     next(t)
                     ast = BinOp(op, ast, parse_sub())
                 case _:
@@ -257,7 +261,8 @@ print(e(parse("2.5-3-4")))       #-4
 print(e(parse("2>3>6")))         #0
 print(e(parse("if 2 < 3 then 4 else 5")))  # 4
 print(e(parse("if 3 > 4 then 10 else 20")))  # 20
-print(e(parse("if (4>2) then 1 else 0")))  # 1
+print(e(parse("if (if 2>3 then 0 else 1) then 1 else 0")))  # 1
+
 print(e(parse("~4+6/0")))           #division by zero 
 
 
