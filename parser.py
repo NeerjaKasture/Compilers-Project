@@ -229,7 +229,7 @@ def parse(s: str) -> AST:
                 return Number(v)
             case ParenthesisToken('('):
                 next(t)
-                expr = parse_comparator()  
+                expr = parse_condition()  
                 match next(t, None):
                     case ParenthesisToken(')'):
                         return Paranthesis(expr)
