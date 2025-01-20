@@ -90,7 +90,7 @@ def lex(s: str) -> Iterator[Token]:
 
         if s[i].isalpha():
             start = i
-            while i < len(s) and (s[i].isalnum() or s[i] == '_'):
+            while i < len(s) and s[i].isalpha() :
                 i += 1
             word = s[start:i]
             if word in {'if', 'then', 'else'}:
@@ -98,10 +98,10 @@ def lex(s: str) -> Iterator[Token]:
             else:
                 raise SyntaxError(f"Unexpected identifier: {word}")
 
-        elif s[i].isdigit() or (s[i] == '.' and i + 1 < len(s) and s[i + 1].isdigit()):
+        elif s[i].isdigit() :
             t = s[i]
             i += 1
-            has_decimal = (t == '.')
+            has_decimal=True
             while i < len(s) and (s[i].isdigit() or (s[i] == '.' and not has_decimal)):
                 if s[i] == '.':
                     has_decimal = True
