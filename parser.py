@@ -32,10 +32,22 @@ class Parenthesis(AST):
 class Boolean(AST):
     val: str
 
-def e(tree: AST) -> float:
+@dataclass
+class Variable(AST):
+    val: str
+
+
+def e(tree: AST, env=None) -> float:
+    if env is None:
+        env = {}
     match tree:
+        case Variable(v):
+            if v in env:
+                return env[v]
+            else:
+                raise NameError(f"Undefined variable: {v}")
         case Boolean(v):
-            if v == "True":
+            if v == "true":
                 return True
             else:
                 return False
@@ -43,28 +55,36 @@ def e(tree: AST) -> float:
             return e(expr)
         case Number(v):
             return float(v)
-        case BinOp("+", l, r):
-            return e(l) + e(r)
-        case BinOp("*", l, r):
-            return e(l) * e(r)
-        case BinOp("-", l, r):
-            return e(l) - e(r)
-        case BinOp("/", l, r):
-            if(e(r) == 0):
-                raise ZeroDivisionError("Division by zero")
-            return e(l) / e(r)
-        case BinOp("^", l, r):
-            return e(l) ** e(r)
-        case BinOp("<", l, r):
-            return e(l) < e(r)
-        case BinOp(">", l, r):
-            return e(l) > e(r)
-        case BinOp("==", l, r):
-            return e(l) == e(r)
-        case BinOp("!=", l, r):
-            return e(l) != e(r)
+        case BinOp(op, l, r):
+            if isinstance(e(l), bool) or isinstance(e(r), bool):
+                if op in {"+", "-", "*", "/", "^","<",">","<=",">="}:
+                    raise TypeError(f"Cannot apply '{op}' to Boolean type")  
+            match op:
+                case "+":
+                    return e(l) + e(r)
+                case "-":
+                    return e(l) - e(r)
+                case "*":
+                    return e(l) * e(r)
+                case "/":
+                    if e(r) == 0:
+                        raise ZeroDivisionError("Division by zero")
+                    return e(l) / e(r)
+                case "^":
+                    return e(l) ** e(r)
+                case "<":
+                    return e(l) < e(r)
+                case ">":
+                    return e(l) > e(r)
+                case "==":
+                    return e(l) == e(r)
+                case "!=":
+                    return e(l) != e(r)
         case Cond(If, Then, Else):
             return e(Then) if e(If) else e(Else)
+     
+
+
 
 class Token:
     pass
@@ -90,7 +110,11 @@ class OperatorToken(Token):
 class BooleanToken(Token):
     b: str
 
-keywords = {"if", "then", "else", "True", "False"}
+@dataclass
+class VariableToken(Token):
+    b: str
+
+keywords = {"if", "then", "else", "true", "false",}
 
 def lex(s: str) -> Iterator[Token]:
     i = 0
@@ -107,12 +131,12 @@ def lex(s: str) -> Iterator[Token]:
                 i += 1
             word = s[start:i]
             if word in keywords:
-                if word in ["True", "False"]:
+                if word in ["true", "false"]:
                     yield BooleanToken(word)
                 else:
                     yield KeywordToken(word)
             else:
-                raise SyntaxError(f"Unexpected identifier: {word}")
+                yield VariableToken(word)
 
         elif s[i].isdigit():
             t = s[i]
@@ -241,6 +265,9 @@ def parse(s: str) -> AST:
             case OperatorToken('~'):  # Check for the tilde operator
                 next(t)
                 return BinOp('*', Number('-1'), parse_atom())
+            case VariableToken(v):
+                next(t)
+                return Variable(v)
             case NumberToken(v):
                 next(t)
                 return Number(v)
@@ -276,8 +303,9 @@ def parse(s: str) -> AST:
 # print(e(parse("2.5-3-4")))       #-4.5
 # print(e(parse("2>3>6")))         #0
 # print(parse("2 !< 3"))  
-print(int(e(parse("False"))))  # 4
-print(e(parse("if False then 10 else 20")))  # 20
+# print(e(parse("true + true"))) # 4
+print(e(parse("x = 4"))) # 4
+# print(e(parse("if False then 10 else 20")))  # 20
 # print(e(parse("if (4>2) then 1 else 0")))  # 1
 # print(e(parse("~4+6/0")))           #division by zero 
 
