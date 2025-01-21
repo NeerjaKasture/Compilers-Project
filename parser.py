@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from collections.abc import Iterator
 from more_itertools import peekable
-
+import sys
 
 class AST:
     pass
@@ -24,15 +24,22 @@ class Cond(AST):
 class Number(AST):
     val: str
 
-
 @dataclass
-class Paranthesis(AST):
+class Parenthesis(AST):
     expr: AST
 
+@dataclass
+class Boolean(AST):
+    val: str
 
 def e(tree: AST) -> float:
     match tree:
-        case Paranthesis(expr):
+        case Boolean(v):
+            if v == "True":
+                return True
+            else:
+                return False
+        case Parenthesis(expr):
             return e(expr)
         case Number(v):
             return float(v)
@@ -43,17 +50,19 @@ def e(tree: AST) -> float:
         case BinOp("-", l, r):
             return e(l) - e(r)
         case BinOp("/", l, r):
+            if(e(r) == 0):
+                raise ZeroDivisionError("Division by zero")
             return e(l) / e(r)
         case BinOp("^", l, r):
             return e(l) ** e(r)
         case BinOp("<", l, r):
-            return float(e(l) < e(r))
+            return e(l) < e(r)
         case BinOp(">", l, r):
-            return float(e(l) > e(r))
+            return e(l) > e(r)
         case BinOp("==", l, r):
-            return float(e(l) == e(r))
+            return e(l) == e(r)
         case BinOp("!=", l, r):
-            return float(e(l) != e(r))
+            return e(l) != e(r)
         case Cond(If, Then, Else):
             return e(Then) if e(If) else e(Else)
 
@@ -63,8 +72,7 @@ class Token:
 
 @dataclass
 class NumberToken(Token):
-    v: str
-
+    n: str
 
 @dataclass
 class ParenthesisToken(Token):
@@ -78,10 +86,15 @@ class KeywordToken(Token):
 class OperatorToken(Token):
     o: str
 
+@dataclass
+class BooleanToken(Token):
+    b: str
+
+keywords = {"if", "then", "else", "True", "False"}
 
 def lex(s: str) -> Iterator[Token]:
     i = 0
-    while i < len(s):
+    while i<len(s):
         while i < len(s) and s[i].isspace():
             i += 1
 
@@ -93,15 +106,18 @@ def lex(s: str) -> Iterator[Token]:
             while i < len(s) and (s[i].isalnum() or s[i] == '_'):
                 i += 1
             word = s[start:i]
-            if word in {'if', 'then', 'else'}:
-                yield KeywordToken(word)
+            if word in keywords:
+                if word in ["True", "False"]:
+                    yield BooleanToken(word)
+                else:
+                    yield KeywordToken(word)
             else:
                 raise SyntaxError(f"Unexpected identifier: {word}")
 
-        elif s[i].isdigit() or (s[i] == '.' and i + 1 < len(s) and s[i + 1].isdigit()):
+        elif s[i].isdigit():
             t = s[i]
             i += 1
-            has_decimal = (t == '.')
+            has_decimal=False
             while i < len(s) and (s[i].isdigit() or (s[i] == '.' and not has_decimal)):
                 if s[i] == '.':
                     has_decimal = True
@@ -155,32 +171,35 @@ def parse(s: str) -> AST:
 
 
     def parse_comparator():
-        ast = parse_sub()
-        while True:
-            match t.peek(None):
-                case OperatorToken(op) if op in {"<", ">", "==", "!="}:
-                    next(t)
-                    ast = BinOp(op, ast, parse_sub())
-                case _:
-                    return ast
-
-    def parse_sub():
         ast = parse_add()
         while True:
             match t.peek(None):
-                case OperatorToken('-'):
-                    next(t)
-                    ast = BinOp('-', ast, parse_add())
+                case OperatorToken(op):
+                    if op in {"<", ">", "==", "!="}:
+                        next(t)
+                        ast = BinOp(op, ast, parse_sub())
+                    else:
+                        raise SyntaxError("Unexpected operator")
                 case _:
                     return ast
 
     def parse_add():
-        ast = parse_mul()
+        ast = parse_sub()
         while True:
             match t.peek(None):
                 case OperatorToken('+'):
                     next(t)
-                    ast = BinOp('+', ast, parse_mul())
+                    ast = BinOp('+', ast, parse_sub())
+                case _:
+                    return ast
+                
+    def parse_sub():
+        ast = parse_mul()
+        while True:
+            match t.peek(None):
+                case OperatorToken('-'):
+                    next(t)
+                    ast = BinOp('-', ast, parse_mul())
                 case _:
                     return ast
 
@@ -202,8 +221,6 @@ def parse(s: str) -> AST:
                 case OperatorToken('/'):
                     next(t)
                     divisor = parse_exponent()
-                    if isinstance(divisor, Number) and float(divisor.val) == 0:
-                        raise ZeroDivisionError("Division by zero is not allowed.")
                     ast = BinOp('/', ast, divisor)
                 case _:
                     return ast
@@ -227,12 +244,15 @@ def parse(s: str) -> AST:
             case NumberToken(v):
                 next(t)
                 return Number(v)
+            case BooleanToken(v):
+                next(t)
+                return Boolean(v)
             case ParenthesisToken('('):
                 next(t)
                 expr = parse_comparator()  
                 match next(t, None):
                     case ParenthesisToken(')'):
-                        return Paranthesis(expr)
+                        return Parenthesis(expr)
                     case _:
                         raise SyntaxError("Expected ')'")
             case _:
@@ -240,24 +260,25 @@ def parse(s: str) -> AST:
 
     return parse_condition()
 
-print(e(parse("2.5^2")))         #6.25
-print(e(parse("2+3^2")))         # 11
-print(e(parse("3 == 2")))        # 0
-print(e(parse("(2+3) > 4")))     # 1
-print(e(parse("6/3*2")))         # 4 (6 / 3 * 2)
-print(e(parse("6/3+2")))         # 4 (6 / 3 + 2)
-print(e(parse("2+6/3")))         # 4 (2 + 6 / 3)
-print(e(parse("2*3/4")))         # 1.5 (2 * 3 / 4)
-print(e(parse("2^3^2")))         # 512 (2^(3^2))
-print(e(parse("(2+3)*4/2")))     # 10((2+3) * 4 / 2)
-print(e(parse("2+3-4*5/2")))     # -5 (2 + 3 - 20 / 2)
-print(e(parse("2+3 > 4")))       # 1 (True: 2+3 > 4)
-print(e(parse("2+6/3 == 4")))    # 1 (True: 2 + 6/3 == 4)
-print(e(parse("2.5-3-4")))       #-4
-print(e(parse("2>3>6")))         #0
-print(e(parse("if 2 < 3 then 4 else 5")))  # 4
-print(e(parse("if 3 > 4 then 10 else 20")))  # 20
-print(e(parse("if (4>2) then 1 else 0")))  # 1
-print(e(parse("~4+6/0")))           #division by zero 
+# print(e(parse("2.5^2")))         #6.25
+# print(e(parse("2+3^2")))         # 11
+# print(e(parse("3 != 2")))        # 0
+# print(e(parse("(2+3) > 4")))     # 1
+# print(e(parse("6/3*2")))         # 4 (6 / 3 * 2)
+# print(e(parse("6/3+2")))         # 4 (6 / 3 + 2)
+# print(e(parse("2+6/3")))         # 4 (2 + 6 / 3)
+# print(e(parse("2*3/4")))         # 1.5 (2 * 3 / 4)
+# print(e(parse("2^3^2")))         # 512 (2^(3^2))
+# print(e(parse("(2+3)*4/2")))     # 10((2+3) * 4 / 2)
+# print(e(parse("2+3-4*5/2")))     # -5 (2 + 3 - 20 / 2)
+# print(e(parse("2+3 > 4")))       # 1 (True: 2+3 > 4)
+# print(e(parse("2+6/3 == 4")))    # 1 (True: 2 + 6/3 == 4)
+# print(e(parse("2.5-3-4")))       #-4.5
+# print(e(parse("2>3>6")))         #0
+# print(parse("2 !< 3"))  
+print(int(e(parse("False"))))  # 4
+print(e(parse("if False then 10 else 20")))  # 20
+# print(e(parse("if (4>2) then 1 else 0")))  # 1
+# print(e(parse("~4+6/0")))           #division by zero 
 
 
