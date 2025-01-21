@@ -36,14 +36,22 @@ class Boolean(AST):
 class Variable(AST):
     val: str
 
+@dataclass
+class Declaration(AST):
+    type: str
+    name: str
+    value: AST
 
-def e(tree: AST, env=None) -> float:
+
+def e(tree: AST, env=None,types=None):
     if env is None:
         env = {}
+    if types is None:
+        types = {}
     match tree:
         case Variable(v):
             if v in env:
-                return env[v]
+                return types[v](env[v])
             else:
                 raise NameError(f"Undefined variable: {v}")
         case Boolean(v):
@@ -54,7 +62,10 @@ def e(tree: AST, env=None) -> float:
         case Parenthesis(expr):
             return e(expr)
         case Number(v):
-            return float(v)
+            if '.' in v:
+                return float(v)
+            else:
+                return int(v)
         case BinOp(op, l, r):
             if isinstance(e(l), bool) or isinstance(e(r), bool):
                 if op in {"+", "-", "*", "/", "^","<",">","<=",">="}:
@@ -82,7 +93,21 @@ def e(tree: AST, env=None) -> float:
                     return e(l) != e(r)
         case Cond(If, Then, Else):
             return e(Then) if e(If) else e(Else)
-     
+        case Declaration(var_type, var_name, value):
+            val = e(value, env, types)
+
+            # Type enforcement
+            if var_type == "int" and not isinstance(val, int):
+                print(type(val))
+                raise TypeError(f"Variable '{var_name}' must be of type int")
+            elif var_type == "float" and not isinstance(val, float):
+                raise TypeError(f"Variable '{var_name}' must be of type float")
+            elif var_type == "bool" and not isinstance(val, bool):
+                raise TypeError(f"Variable '{var_name}' must be of type bool")
+
+            env[var_name] = val
+            types[var_name] = var_type
+            return val
 
 
 
@@ -112,9 +137,14 @@ class BooleanToken(Token):
 
 @dataclass
 class VariableToken(Token):
-    b: str
+    v: str
 
-keywords = {"if", "then", "else", "true", "false",}
+@dataclass
+class TypeToken(Token):
+    t: str
+
+keywords = {"if", "then", "else", "true", "false"}
+datatypes = {"int", "float", "bool"}
 
 def lex(s: str) -> Iterator[Token]:
     i = 0
@@ -130,7 +160,9 @@ def lex(s: str) -> Iterator[Token]:
             while i < len(s) and (s[i].isalnum() or s[i] == '_'):
                 i += 1
             word = s[start:i]
-            if word in keywords:
+            if word in datatypes:
+                yield TypeToken(word)
+            elif word in keywords:
                 if word in ["true", "false"]:
                     yield BooleanToken(word)
                 else:
@@ -191,9 +223,33 @@ def parse(s: str) -> AST:
                 return Cond(condition, then_branch, else_branch)
 
             case _:
-                return parse_comparator() 
+                return parse_declaration() 
 
-
+    def parse_declaration():
+        match t.peek(None):
+            case TypeToken(var_type):
+                if var_type not in datatypes:
+                    raise TypeError(f"Invalid type: {var_type}")
+                else :
+                    next(t)
+                    match t.peek(None):
+                        case VariableToken(var_name):
+                            if var_name in keywords:
+                                raise SyntaxError(f"Invalid variable name: {var_name}")
+                            else:
+                                next(t)
+                                match t.peek(None):
+                                    case OperatorToken('='):
+                                        next(t)
+                                        value = parse_comparator()
+                                        return Declaration(var_type, var_name, value)
+                                    case _:
+                                        raise SyntaxError("Expected '=' after variable name")
+                        case _:
+                            raise SyntaxError("Expected variable name")
+            case _:
+                raise SyntaxError("Expected type")
+                                   
     def parse_comparator():
         ast = parse_add()
         while True:
@@ -304,7 +360,8 @@ def parse(s: str) -> AST:
 # print(e(parse("2>3>6")))         #0
 # print(parse("2 !< 3"))  
 # print(e(parse("true + true"))) # 4
-print(e(parse("x = 4"))) # 4
+print(e(parse("int x = 4"))) # 4
+print(e(parse("float y = 2.5"))) # 2.5
 # print(e(parse("if False then 10 else 20")))  # 20
 # print(e(parse("if (4>2) then 1 else 0")))  # 1
 # print(e(parse("~4+6/0")))           #division by zero 
