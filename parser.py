@@ -21,8 +21,6 @@ class Sequence(AST):
     def __repr__(self):
         return f"Sequence({self.statements})"
 
-
-
 @dataclass
 class Cond(AST):
     If: AST
@@ -175,10 +173,6 @@ def e(tree: AST, env={},types={}): # could also make the env dict global
 
             return left_val + right_val 
 
-       
-
-
-
 class Token:
     pass
 
@@ -217,7 +211,7 @@ class VariableToken(Token):
 class TypeToken(Token):
     t: str
 
-keywords = {"if", "then", "else", "true", "false","print","concat"}
+keywords = {"if", "then", "else", "true", "false","print","concat","while"}
 
 def lex(s: str) -> Iterator[Token]:
     i = 0
