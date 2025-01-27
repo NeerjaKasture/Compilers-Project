@@ -50,10 +50,6 @@ class Boolean(AST):
     val: str
 
 @dataclass
-class String(AST):
-    val: str
-
-@dataclass
 class Variable(AST):
     val: str
 
@@ -68,12 +64,7 @@ class Assignment(AST):
     name: str
     value: AST
 
-@dataclass
-class Concat(AST):
-    left: str
-    right: str 
-
-datatypes = {"int": int, "float": float, "bool": bool, "string": str}
+datatypes = {"int": int, "float": float, "bool": bool}
 
 def e(tree: AST, env={},types={}): # could also make the env dict global 
     match tree:
@@ -98,9 +89,6 @@ def e(tree: AST, env={},types={}): # could also make the env dict global
             if isinstance(e(l), bool) or isinstance(e(r), bool):
                 if op in {"+", "-", "*", "/", "^","<",">","<=",">="}:
                     raise TypeError(f"Cannot apply '{op}' to Boolean type")  
-            if isinstance(e(l), str) or isinstance(e(r), str):
-                if op in {"+", "-", "*", "/", "^","<",">","<=",">="}:
-                    raise TypeError(f"Cannot apply '{op}' to String type")  
             match op:
                 case "+":
                     return e(l) + e(r)
@@ -164,20 +152,6 @@ def e(tree: AST, env={},types={}): # could also make the env dict global
             for stmt in statements:
                 last_value.append(e(stmt, env, types))  # Evaluate each statement
             return last_value
-        case String(v):
-            return v
-        case Concat(left, right):
-            left_val = e(left, env, types)
-            right_val = e(right, env, types)
-
-            if not isinstance(left_val, str) or not isinstance(right_val, str):
-                raise TypeError("Concat can only be used with String")
-
-            return left_val + right_val 
-
-       
-
-
 
 class Token:
     pass
@@ -206,10 +180,6 @@ class BooleanToken(Token):
     b: str
 
 @dataclass
-class StringToken(Token):
-    s: str
-
-@dataclass
 class VariableToken(Token):
     v: str
 
@@ -218,7 +188,6 @@ class TypeToken(Token):
     t: str
 
 keywords = {"if", "then", "else","while", "true", "false"}
-keywords = {"if", "then", "else", "true", "false","print","concat"}
 
 def lex(s: str) -> Iterator[Token]:
     i = 0
@@ -255,18 +224,9 @@ def lex(s: str) -> Iterator[Token]:
                 i += 1
             yield NumberToken(t)
 
-        elif s[i] == '"':
-            i += 1
-            start = i
-            while i < len(s) and s[i] != '"':
-                i += 1
-            yield StringToken(s[start:i])
-            i += 1
-
         else:
             match s[i]:
                 case '+' | '*' | '-' | '/' | '^' | '(' | ')' | '<' | '>' | '=' | '!'| '~'|'{'|'}'|';':
-                case '+' | '*' | '-' | '/' | '^' | '(' | ')' | '<' | '>' | '=' | '!'| '~'|',':
                     if s[i] in '<>=!' and i + 1 < len(s) and s[i + 1] == '=':
                         yield OperatorToken(s[i:i + 2])
                         i += 2
@@ -458,26 +418,6 @@ def parse(s: str) -> AST:
 
     def parse_atom():
         match t.peek(None):
-            case KeywordToken('concat'):
-                next(t)
-                match t.peek(None):
-                    case ParenthesisToken('('):
-                        next(t)
-                        left = parse_atom()
-                        match t.peek(None):
-                            case OperatorToken(','):
-                                next(t)
-                                right = parse_atom()
-                                match t.peek(None):
-                                    case ParenthesisToken(')'):
-                                        next(t)
-                                        return Concat(left, right)
-                                    case _:
-                                        raise SyntaxError("Expected ')'")
-                            case _:
-                                raise SyntaxError("Expected ','")
-                    case _:
-                        raise SyntaxError("Expected '('")
             case OperatorToken('~'):  # Check for the tilde operator
                 next(t)
                 return BinOp('*', Number('-1'), parse_atom())
@@ -498,9 +438,6 @@ def parse(s: str) -> AST:
                         return Parenthesis(expr)
                     case _:
                         raise SyntaxError("Expected ')'")
-            case StringToken(v):
-                next(t)
-                return String(v)
             case _:
                 print(*t)
                 raise SyntaxError("Unexpected token")
@@ -540,9 +477,3 @@ def parse(s: str) -> AST:
 # print(e(parse("x == 0")))  
 print(e(parse("int x=0; while (x < 2) {int j=0;while(j<3){j=j+1}; x=x+1 }")))  # Loop that increments x until x is 10
 # print(e(parse("x == 10 ")))
-print(e(parse("x==10")))
-
-
-print(e(parse(' concat("45", "3" )' )))
-# concat not +
-# repeat not *
