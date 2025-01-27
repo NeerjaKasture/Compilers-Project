@@ -12,12 +12,30 @@ class BinOp(AST):
     left: AST
     right: AST  
 
+class Sequence(AST):
+    __match_args__ = ("statements",)  # Tells Python to expect a "statements" attribute during matching
+
+    def __init__(self, statements):
+        self.statements = statements
+
+    def __repr__(self):
+        return f"Sequence({self.statements})"
+
+
 
 @dataclass
 class Cond(AST):
     If: AST
     Then: AST
     Else: AST
+
+@dataclass
+class While(AST):
+    condition: AST
+    body: list[AST]  
+
+# @dataclass 
+# class For(AST):
 
 @dataclass
 class Number(AST):
@@ -94,6 +112,7 @@ def e(tree: AST, env={},types={}): # could also make the env dict global
                     return e(l) != e(r)
         case Cond(If, Then, Else):
             return e(Then) if e(If) else e(Else)
+        
         case Declaration(var_type, var_name, value):
             val = e(value, env, types)
 
@@ -106,6 +125,7 @@ def e(tree: AST, env={},types={}): # could also make the env dict global
             types[var_name] = var_type
 
             return val
+        
         case Assignment(var_name, value):
             if var_name not in env:
                 raise NameError(f"Undefined variable: {var_name}")
@@ -117,8 +137,21 @@ def e(tree: AST, env={},types={}): # could also make the env dict global
             
             env[var_name] = val
             return val
-
-
+        
+        case While(condition, body):
+            xy=None
+            while e(condition, env, types):
+                for stmt in body:
+                  xy= e(stmt, env, types)
+                  print(xy)
+                  
+            return xy
+        
+        case Sequence(statements):
+            last_value = []
+            for stmt in statements:
+                last_value.append(e(stmt, env, types))  # Evaluate each statement
+            return last_value
 
 class Token:
     pass
@@ -131,7 +164,9 @@ class NumberToken(Token):
 @dataclass
 class ParenthesisToken(Token):
     p: str
-
+@dataclass
+class SemicolonToken(Token):
+    s: str
 @dataclass
 class KeywordToken(Token):
     value: str
@@ -152,7 +187,7 @@ class VariableToken(Token):
 class TypeToken(Token):
     t: str
 
-keywords = {"if", "then", "else", "true", "false"}
+keywords = {"if", "then", "else","while", "true", "false"}
 
 def lex(s: str) -> Iterator[Token]:
     i = 0
@@ -191,13 +226,15 @@ def lex(s: str) -> Iterator[Token]:
 
         else:
             match s[i]:
-                case '+' | '*' | '-' | '/' | '^' | '(' | ')' | '<' | '>' | '=' | '!'| '~':
+                case '+' | '*' | '-' | '/' | '^' | '(' | ')' | '<' | '>' | '=' | '!'| '~'|'{'|'}'|';':
                     if s[i] in '<>=!' and i + 1 < len(s) and s[i + 1] == '=':
                         yield OperatorToken(s[i:i + 2])
                         i += 2
                     else:
-                        if s[i] in "()":
+                        if s[i] in "(){}":
                             yield ParenthesisToken(s[i])
+                        elif s[i]==';':
+                            yield SemicolonToken(s[i])
                         else:
                             yield OperatorToken(s[i])
                         i += 1
@@ -207,6 +244,17 @@ def lex(s: str) -> Iterator[Token]:
 
 def parse(s: str) -> AST:
     t = peekable(lex(s))
+    def parse_sequence():
+        statements = []
+        while True:
+            stmt = parse_condition()  
+            statements.append(stmt)
+            match t.peek(None):
+                case SemicolonToken(';'):
+                    next(t)
+                case _:
+                    break  
+        return Sequence(statements) if len(statements) > 1 else statements[0]  
 
     def parse_condition():
         match t.peek(None):
@@ -232,7 +280,34 @@ def parse(s: str) -> AST:
 
                 else_branch = parse_condition() 
                 return Cond(condition, then_branch, else_branch)
-
+            
+            case KeywordToken('while'):
+                next(t)  
+                
+                match t.peek(None):
+                    case ParenthesisToken('('):
+                        next(t)  
+                        condition = parse_comparator()  
+                        
+                        match next(t, None):
+                            case ParenthesisToken(')'): 
+                                pass
+                            case _:
+                                raise SyntaxError("Expected ')' after while condition")
+                    case _:
+                        raise SyntaxError("Expected '(' after 'while' keyword")
+                
+                match t.peek(None):
+                    case ParenthesisToken('{'):
+                        next(t)  
+                        body = []
+                        while t.peek(None) != ParenthesisToken('}'):
+                            body.append(parse_sequence())  
+                        next(t)  
+                        return While(condition, body)
+                
+                    case _:
+                        raise SyntaxError("Expected '{' after while condition")
             case _:
                 return parse_assignment() 
     
@@ -246,8 +321,7 @@ def parse(s: str) -> AST:
                         value = parse_comparator()
                         return Assignment(var_name, value)
                     case _:
-                        t.prepend(VariableToken(var_name))  # Put back the variable token
-                        return parse_comparator()
+                        raise SyntaxError("Expected '=' after variable name")
             case _:
                 return parse_declaration()
 
@@ -283,7 +357,7 @@ def parse(s: str) -> AST:
                 case OperatorToken(op):
                     if op in {"<", ">", "==", "!="}:
                         next(t)
-                        ast = BinOp(op, ast, parse_sub())
+                        ast = BinOp(op, ast, parse_add())
                     else:
                         raise SyntaxError("Unexpected operator")
                 case _:
@@ -365,9 +439,10 @@ def parse(s: str) -> AST:
                     case _:
                         raise SyntaxError("Expected ')'")
             case _:
+                print(*t)
                 raise SyntaxError("Unexpected token")
 
-    return parse_condition()
+    return parse_sequence()
 
 # print(e(parse("2.5^2")))         #6.25
 # print(e(parse("2+3^2")))         # 11
@@ -393,12 +468,12 @@ def parse(s: str) -> AST:
 # print(e(parse("if False then 10 else 20")))  # 20
 # print(e(parse("if (4>2) then 1 else 0")))  # 1
 # print(e(parse("~4+6/0")))           #division by zero 
-print(e(parse("int x = 4")))
+# print(e(parse("int x = 4")))
 
 # compiler forces float to be like '1.0' is this right ? 
 # print(e(parse("float x = x * 5"))) # rn this raises error but what should be the output
 # print(e(parse("if (x-2)>0 then true else false")))  # 0
-print(e(parse("x==10")))
-
-
-
+# print(e(parse("int x = 0")))  # Initialize x to 0
+# print(e(parse("x == 0")))  
+print(e(parse("int x=0; while (x < 2) {int j=0;while(j<3){j=j+1}; x=x+1 }")))  # Loop that increments x until x is 10
+# print(e(parse("x == 10 ")))
