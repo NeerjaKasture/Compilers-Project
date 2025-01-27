@@ -217,7 +217,6 @@ class VariableToken(Token):
 class TypeToken(Token):
     t: str
 
-keywords = {"if", "then", "else","while", "true", "false"}
 keywords = {"if", "then", "else", "true", "false","print","concat"}
 
 def lex(s: str) -> Iterator[Token]:
@@ -266,7 +265,6 @@ def lex(s: str) -> Iterator[Token]:
         else:
             match s[i]:
                 case '+' | '*' | '-' | '/' | '^' | '(' | ')' | '<' | '>' | '=' | '!'| '~'|'{'|'}'|';':
-                case '+' | '*' | '-' | '/' | '^' | '(' | ')' | '<' | '>' | '=' | '!'| '~'|',':
                     if s[i] in '<>=!' and i + 1 < len(s) and s[i + 1] == '=':
                         yield OperatorToken(s[i:i + 2])
                         i += 2
