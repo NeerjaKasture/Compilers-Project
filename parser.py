@@ -246,7 +246,8 @@ def parse(s: str) -> AST:
                         value = parse_comparator()
                         return Assignment(var_name, value)
                     case _:
-                        raise SyntaxError("Expected '=' after variable name")
+                        t.prepend(VariableToken(var_name))  # Put back the variable token
+                        return parse_comparator()
             case _:
                 return parse_declaration()
 
@@ -396,8 +397,8 @@ print(e(parse("int x = 4")))
 
 # compiler forces float to be like '1.0' is this right ? 
 # print(e(parse("float x = x * 5"))) # rn this raises error but what should be the output
-print(e(parse("if (x-2)>0 then true else false")))  # 0
-
+# print(e(parse("if (x-2)>0 then true else false")))  # 0
+print(e(parse("x==10")))
 
 
 
