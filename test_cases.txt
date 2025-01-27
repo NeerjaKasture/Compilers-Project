@@ -1,0 +1,25 @@
+2+3-5 | 0
+8+  2+ (~3) | 7
+6/3*2 | 4.0
+6/3+4 | 6.0
+2+6/3 | 4.0
+2+3*6 / 2 -4 | 7.0
+2.5^2 | 6.25
+2+3^2 | 11
+2^3^2 | 512
+2+(~3) | -1
+3 != 2 | True
+(2+3) > 4 | True
+2 != 3 | True
+2>3<2 | error
+true+True | error
+2*2 != 4.0 | false
+int x = 4 | 4
+x = 8 | 8
+x = 8.0 | error
+float b = 2 | error
+if (4>3) then 2.0*3 else 2*3 | 6.0
+if 2>1 then float a = 2.0 else int a = 2 | 2.0
+bool z = true | True
+z = False | error
+if 2>1 then int a = 2 else int a = 6 | 2

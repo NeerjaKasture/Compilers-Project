@@ -1,0 +1,77 @@
+from parser import e, parse
+
+def read_test_cases(file_path):
+    test_cases = []
+    with open(file_path, 'r') as f:
+        for line_number, line in enumerate(f, start=1):
+            line = line.strip()
+            if not line or '|' not in line:
+                print(f"Invalid line {line_number} in {file_path}: {line}")
+                exit(1)
+
+            expression, expected_result = line.split('|', 1)
+            expression = expression.strip()
+            expected_result = expected_result.strip()
+
+            if expected_result.lower() == "true": # handling boolean entries test_cases.txt
+                expected_result = True
+            elif expected_result.lower() == "false":
+                expected_result = False
+            elif expected_result.isdigit(): # handling int 
+                expected_result = int(expected_result)
+            else:
+                try:
+                    float_value = float(expected_result)
+                    if '.' in expected_result:  # Ensure it's a float, not an int
+                        expected_result = float_value
+                    else:
+                        expected_result = int(float_value)
+                except ValueError:
+                    if expected_result.lower() != "error":  # Allow only "error" as a string
+                        print(f"Invalid line {line_number} in {file_path}: {line}")
+                        exit(1)
+
+            test_cases.append((expression, expected_result))
+
+    return test_cases
+
+
+def run_tests(test_cases):
+    for expression, expected in test_cases:
+        try:
+            result = e(parse(expression))
+
+            # If expected result is 'error', but no error occurred
+            if expected == "error":
+                print(f"Test failed: {expression} => Expected an error, but got {result}")
+                return
+
+            # Ensure type match between result and expected
+            if type(result) != type(expected):
+                print(f"Test failed: {expression} => Expected {expected} ({type(expected).__name__}), but got {result} ({type(result).__name__})")
+                return
+
+            # If numeric, allow small floating-point errors
+            if isinstance(expected, (int, float)) and abs(result - expected) > 1e-9:
+                print(f"Test failed: {expression} => Expected {expected}, but got {result}")
+                return
+
+            # Non-numeric results (bool) must match exactly
+            if isinstance(expected, bool) and result != expected:
+                print(f"Test failed: {expression} => Expected {expected}, but got {result}")
+                return
+
+        except Exception as error:
+            # If an error was expected, the test should pass
+            if expected == "error":
+                continue  # Move to the next test case
+            else:
+                print(f"Error in expression {expression}: {error}")
+                return
+
+    print("All test cases passed")
+
+if __name__ == '__main__':
+    test_cases_file = 'test_cases.txt'
+    test_cases = read_test_cases(test_cases_file)
+    run_tests(test_cases)
