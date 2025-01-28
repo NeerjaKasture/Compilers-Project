@@ -1,3 +1,4 @@
+import ast
 from parser import e, parse
 
 def read_test_cases(file_path):
@@ -13,12 +14,20 @@ def read_test_cases(file_path):
             expression = expression.strip()
             expected_result = expected_result.strip()
 
-            if expected_result.lower() == "true": # handling boolean entries test_cases.txt
+            if expected_result.lower() == "true":  # Handling boolean entries
                 expected_result = True
             elif expected_result.lower() == "false":
                 expected_result = False
-            elif expected_result.isdigit(): # handling int 
+            elif expected_result.isdigit():  # Handling int
                 expected_result = int(expected_result)
+            elif expected_result.startswith("[") and expected_result.endswith("]"):  # Handling lists
+                try:
+                    expected_result = ast.literal_eval(expected_result)
+                    if not isinstance(expected_result, list):
+                        raise ValueError  # Ensure it's actually a list
+                except (SyntaxError, ValueError):
+                    print(f"Invalid list format on line {line_number} in {file_path}: {line}")
+                    exit(1)
             else:
                 try:
                     float_value = float(expected_result)
@@ -41,7 +50,6 @@ def run_tests(test_cases):
         try:
             result = e(parse(expression))
 
-            # If expected result is 'error', but no error occurred
             if expected == "error":
                 print(f"Test failed: {expression} => Expected an error, but got {result}")
                 return
@@ -56,13 +64,18 @@ def run_tests(test_cases):
                 print(f"Test failed: {expression} => Expected {expected}, but got {result}")
                 return
 
+            # Handle lists comparison
+            if isinstance(expected, list):
+                if result != expected:
+                    print(f"Test failed: {expression} => Expected {expected}, but got {result}")
+                    return
+
             # Non-numeric results (bool) must match exactly
             if isinstance(expected, bool) and result != expected:
                 print(f"Test failed: {expression} => Expected {expected}, but got {result}")
                 return
 
         except Exception as error:
-            # If an error was expected, the test should pass
             if expected == "error":
                 continue  # Move to the next test case
             else:

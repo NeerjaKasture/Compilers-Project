@@ -14,12 +14,12 @@
 2>3<2 | error
 true+True | error
 2*2 != 4.0 | false
-int x = 4 | 4
-x = 8 | 8
-x = 8.0 | error
+int x = 4; x = 8 | [4, 8]
+int x = 4; x = 8; x = 8.0 | error
 float b = 2 | error
-if (4>3) then 2.0*3 else 2*3 | 6.0
+int a = 2; if (a>3) then 2.0*3 else 2*3 | [2, 6]
 if 2>1 then float a = 2.0 else int a = 2 | 2.0
 bool z = true | True
 z = False | error
 if 2>1 then int a = 2 else int a = 6 | 2
+int x = 0; if 2>3 then x = x+1 else x = x+2 | [0, 2]
