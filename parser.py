@@ -3,15 +3,18 @@ from collections.abc import Iterator
 from more_itertools import peekable
 import sys
 
+# Base class for all AST nodes
 class AST:
     pass
 
+# AST node for binary operations
 @dataclass
 class BinOp(AST):
     op: str
     left: AST
     right: AST  
 
+# AST node for a sequence of statements
 class Sequence(AST):
     __match_args__ = ("statements",)  # Tells Python to expect a "statements" attribute during matching
 
@@ -21,12 +24,14 @@ class Sequence(AST):
     def __repr__(self):
         return f"Sequence({self.statements})"
 
+# AST node for conditional statements
 @dataclass
 class Cond(AST):
     If: AST
     Then: AST
     Else: AST
 
+# AST node for while loops
 @dataclass
 class While(AST):
     condition: AST
@@ -35,44 +40,54 @@ class While(AST):
 # @dataclass 
 # class For(AST):
 
+# AST node for numbers
 @dataclass
 class Number(AST):
     val: str
 
+# AST node for parenthesis expressions
 @dataclass
 class Parenthesis(AST):
     expr: AST
 
+# AST node for boolean values
 @dataclass
 class Boolean(AST):
     val: str
 
+# AST node for string values
 @dataclass
 class String(AST):
     val: str
 
+# AST node for variables
 @dataclass
 class Variable(AST):
     val: str
 
+# AST node for variable declarations
 @dataclass
 class Declaration(AST):
     type: str
     name: str
     value: AST
 
+# AST node for variable assignments
 @dataclass
 class Assignment(AST):
     name: str
     value: AST
 
+# AST node for string concatenation
 @dataclass
 class Concat(AST):
     left: str
     right: str 
 
+# Dictionary to map data types to Python types
 datatypes = {"int": int, "float": float, "bool": bool, "string": str}
 
+# Function to evaluate the AST
 def e(tree: AST, env={},types={}): # could also make the env dict global 
     match tree:
         case Variable(v):
@@ -173,10 +188,12 @@ def e(tree: AST, env={},types={}): # could also make the env dict global
 
             return left_val + right_val 
 
+# Base class for all tokens
 class Token:
     pass
 
 
+# Token classes for different types of tokens
 @dataclass
 class NumberToken(Token):
     n: str
@@ -211,8 +228,10 @@ class VariableToken(Token):
 class TypeToken(Token):
     t: str
 
+# Set of keywords
 keywords = {"if", "then", "else", "true", "false","print","concat","while"}
 
+# Lexer function to tokenize the input string
 def lex(s: str) -> Iterator[Token]:
     i = 0
     while i<len(s):
@@ -274,6 +293,7 @@ def lex(s: str) -> Iterator[Token]:
                     raise SyntaxError(f"Unexpected character: {s[i]}")
 
 
+# Parser function to parse the tokenized input
 def parse(s: str) -> AST:
     t = peekable(lex(s))
     def parse_sequence():
@@ -499,7 +519,7 @@ def parse(s: str) -> AST:
                 raise SyntaxError("Unexpected token")
 
     return parse_sequence()
-
+# Test cases
 # print(e(parse("2.5^2")))         #6.25
 # print(e(parse("2+3^2")))         # 11
 # print(e(parse("3 != 2")))        # 0
