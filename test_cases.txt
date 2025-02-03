@@ -25,3 +25,23 @@ z = False | error
 if 2>1 then int a = 2 else int a = 6 | 2
 int x = 0; if 2>3 then x = x+1 else x = x+2 | [0, 2]
 concat("hello", "world") | helloworld
+if 1>0 then if 2+3 > 6 then 3+4 else 2+7 else 3+1
+if 1>0 then (if 2+3 > 6 then 3+4) else 3+1
+if 1>0 then (if 2+3 > 6 then 3+4 else 2+7) else 3+1
+int y = 5; if (y > 3) then y = y + 2 else y = y - 2
+int z = 10; if (z == 10) then z = z / 2 else z = z * 2
+if (true) then 1 else 0
+if (false) then 1 else 0
+if (2 > 1) then (if 3 < 4 then 5 else 6) else 7
+int a = 3; if (a == 3) then (if a > 2 then a = a + 1 else a = a - 1) else a = a * 2
+int i = 0; while (i < 5) { i = i + 1 }
+int sum = 0; int j = 1; while (j <= 5) { sum = sum + j; j = j + 1 }
+int k = 10; while (k > 0) { k = k - 2 }
+int n = 1; while (n < 100) { n = n * 2 }
+int m = 5; while (m != 0) { m = m - 1 }
+int x = 0; while (x < 3) { x = x + 1 } if (x == 3) then x = x * 2 else x = x - 1
+int y = 2; while (y < 10) { y = y + 3 }
+int z = 1; while (z <= 10) { z = z + z }
+int a = 0; while (a < 5) { a = a + 1 } if (a == 5) then a = a * 2 else a = a - 1
+int b = 3; while (b > 0) { b = b - 1 } if (b == 0) then b = b + 5 else b = b - 1
+int sum = 0; int j = 1; while (j <= 5) { sum = sum + j; j = j + 1 }
