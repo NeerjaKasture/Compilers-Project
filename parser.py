@@ -500,41 +500,7 @@ def parse(s: str) -> AST:
 
     return parse_sequence()
 
-# print(e(parse("2.5^2")))         #6.25
-# print(e(parse("2+3^2")))         # 11
-# print(e(parse("3 != 2")))        # 0
-# print(e(parse("(2+3) > 4")))     # 1
-# print(e(parse("6/3*2")))         # 4 (6 / 3 * 2)
-# print(e(parse("6/3+2")))         # 4 (6 / 3 + 2)
-# print(e(parse("2+6/3")))         # 4 (2 + 6 / 3)
-# print(e(parse("2*3/4")))         # 1.5 (2 * 3 / 4)
-# print(e(parse("2^3^2")))         # 512 (2^(3^2))
-# print(e(parse("(2+3)*4/2")))     # 10((2+3) * 4 / 2)
-# print(e(parse("2+3-4*5/2")))     # -5 (2 + 3 - 20 / 2)
-# print(e(parse("2+3 > 4")))       # 1 (True: 2+3 > 4)
-# print(e(parse("2+6/3 == 4")))    # 1 (True: 2 + 6/3 == 4)
-# print(e(parse("2.5-3-4")))       #-4.5
-# print(e(parse("2>3>6")))         #0
-# print(parse("2 !< 3"))  
-# print(e(parse("true + true"))) # 4
-# print(e(parse("if 4>3 then int a = 4 else int a = 0"))) # 4
-# print(parse("if 4>3 then int a = 4 else int a = 0"))
-# print(e(parse("float y = 2.5"))) # 2.5
-# print(e(parse("bool z = true"))) # True
-# print(e(parse("if False then 10 else 20")))  # 20
-# print(e(parse("if (4>2) then 1 else 0")))  # 1
-# print(e(parse("~4+6/0")))           #division by zero 
-# print(e(parse("int x = 4")))
 
 # compiler forces float to be like '1.0' is this right ? 
-# print(e(parse("float x = x * 5"))) # rn this raises error but what should be the output
-# print(e(parse("if (x-2)>0 then true else false")))  # 0
-print(e(parse("int x = 0")))  # Initialize x to 0
-# print(e(parse("x == 0")))  
-# print(e(parse("int x=0; while (x < 2) {int j=0;while(j<3){j=j+1}; x=x+1 }")))  # Loop that increments x until x is 10
-print(e(parse("x != 10 ")))
 
 
-# print(e(parse(' concat("45", "3" )' )))
-# concat not +
-# repeat not *

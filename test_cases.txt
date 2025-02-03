@@ -8,11 +8,12 @@
 2+3^2 | 11
 2^3^2 | 512
 2+(~3) | -1
+~4+2/0 | error
 3 != 2 | True
 (2+3) > 4 | True
 2 != 3 | True
 2>3<2 | error
-true+True | error
+true+true | error
 2*2 != 4.0 | false
 int x = 4; x = 8 | [4, 8]
 int x = 4; x = 8; x = 8.0 | error
@@ -23,3 +24,4 @@ bool z = true | True
 z = False | error
 if 2>1 then int a = 2 else int a = 6 | 2
 int x = 0; if 2>3 then x = x+1 else x = x+2 | [0, 2]
+concat("hello", "world") | helloworld
