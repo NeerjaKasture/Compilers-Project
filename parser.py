@@ -12,7 +12,7 @@ class AST:
 class BinOp(AST):
     op: str
     left: AST
-    right: AST  
+    right: AST|None
 
 # AST node for a sequence of statements
 class Sequence(AST):
@@ -110,7 +110,14 @@ def e(tree: AST, env={},types={}): # could also make the env dict global
         case BinOp(op, l, r):
             if isinstance(e(l), bool) or isinstance(e(r), bool):
                 if op in {"+", "-", "*", "/", "^","<",">","<=",">="}:
-                    raise TypeError(f"Cannot apply '{op}' to Boolean type")  
+                    raise TypeError(f"Cannot apply '{op}' to Boolean type")
+                match op:
+                    case "and":
+                        return e(l) and e(r)
+                    case "or":
+                        return e(l) or e(r)
+                    case "not":
+                        return not e(l)
             if isinstance(e(l), str) or isinstance(e(r), str):
                 if op in {"+", "-", "*", "/", "^","<",">","<=",">="}:
                     raise TypeError(f"Cannot apply '{op}' to String type")  
@@ -229,7 +236,7 @@ class TypeToken(Token):
     t: str
 
 # Set of keywords
-keywords = {"if", "then", "else", "true", "false","print","concat","while"}
+keywords = {"if", "then", "else", "true", "false","print","concat","while", "and", "or", "not"}
 
 # Lexer function to tokenize the input string
 def lex(s: str) -> Iterator[Token]:
@@ -251,6 +258,8 @@ def lex(s: str) -> Iterator[Token]:
             elif word in keywords:
                 if word in ["true", "false"]:
                     yield BooleanToken(word)
+                elif word in ["and", "or", "not"]:
+                    yield OperatorToken(word)
                 else:
                     yield KeywordToken(word)
             else:
@@ -402,13 +411,19 @@ def parse(s: str) -> AST:
                             raise SyntaxError("Expected variable name")
             case _:
                 return parse_comparator()
-                                   
+
     def parse_comparator():
         ast = parse_add()
         while True:
             match t.peek(None):
                 case OperatorToken(op):
                     if op in {"<", ">", "==", "!="}:
+                        next(t)
+                        ast = BinOp(op, ast, parse_add())
+                    elif op in {"and", "or"}:
+                        next(t)
+                        ast = BinOp(op, ast, parse_add())
+                    elif op in {"not"}:
                         next(t)
                         ast = BinOp(op, ast, parse_add())
                     else:
@@ -521,7 +536,7 @@ def parse(s: str) -> AST:
     return parse_sequence()
 
 # Test cases
-# print(e(parse("2.5^2")))         #6.25
+# print(e(parse("")))         #
 # print(e(parse("2+3^2")))         # 11
 # print(e(parse("3 != 2")))        # 0
 # print(e(parse("(2+3) > 4")))     # 1
