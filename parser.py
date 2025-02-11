@@ -37,8 +37,13 @@ class While(AST):
     condition: AST
     body: list[AST]  
 
-# @dataclass 
-# class For(AST):
+@dataclass
+class For(AST):
+    init: AST
+    condition: AST
+    increment: AST
+    body: list[AST]
+
 
 # AST node for numbers
 @dataclass
@@ -179,6 +184,19 @@ def e(tree: AST, env={},types={}): # could also make the env dict global
                   
             return xy
         
+        case For(init, condition, increment, body):
+            xy = None
+            e(init, env, types)  # Execute initialization (e.g., i = 0)
+            
+            while e(condition, env, types):  # Check loop condition
+                for stmt in body:
+                    xy = e(stmt, env, types)  # Execute loop body
+                    print(xy)
+
+                e(increment, env, types)  # Execute increment (e.g., i = i + 1)
+
+            return xy
+
         case Sequence(statements):
             last_value = []
             for stmt in statements:
@@ -236,7 +254,7 @@ class TypeToken(Token):
     t: str
 
 # Set of keywords
-keywords = {"if", "then", "else", "true", "false","print","concat","while", "and", "or", "not"}
+keywords = {"if", "then", "else", "true", "false","print","concat","while","for", "and", "or", "not"}
 
 # Lexer function to tokenize the input string
 def lex(s: str) -> Iterator[Token]:
@@ -342,6 +360,51 @@ def parse(s: str) -> AST:
                 else_branch = parse_condition() 
                 return Cond(condition, then_branch, else_branch)
             
+            case KeywordToken('for'):
+                next(t)  
+                
+                match t.peek(None):
+                    case ParenthesisToken('('):
+                        next(t)  
+                        init = parse_assignment()  # Parse initialization (e.g., int i = 0)
+                        
+                        match next(t, None):
+                            case SemicolonToken(';'):
+                                pass
+                            case _:
+                                raise SyntaxError("Expected ';' after for-loop initialization")
+
+                        condition = parse_comparator()  # Parse condition (e.g., i < 10)
+                        
+                        match next(t, None):
+                            case SemicolonToken(';'):
+                                pass
+                            case _:
+                                raise SyntaxError("Expected ';' after for-loop condition")
+
+                        increment = parse_assignment()  # Parse increment (e.g., i = i + 1)
+                        
+                        match next(t, None):
+                            case ParenthesisToken(')'):
+                                pass
+                            case _:
+                                raise SyntaxError("Expected ')' after for-loop increment")
+
+                    case _:
+                        raise SyntaxError("Expected '(' after 'for' keyword")
+
+                match t.peek(None):
+                    case ParenthesisToken('{'):
+                        next(t)  
+                        body = []
+                        while t.peek(None) != ParenthesisToken('}'):
+                            body.append(parse_sequence())  
+                        next(t)  
+                        return For(init, condition, increment, body)
+
+                    case _:
+                        raise SyntaxError("Expected '{' after for-loop definition")
+
             case KeywordToken('while'):
                 next(t)  
                 
@@ -561,6 +624,9 @@ def parse(s: str) -> AST:
 # print(e(parse("if (4>2) then 1 else 0")))  # 1
 # print(e(parse("~4+6/0")))           #division by zero 
 # print(e(parse("int x = 4")))
+print(e(parse('int x=0;for(int i=0; i<2; i=i+1){for(int j=5; j>0; j=j-1){x=x-1};x=x+1}')))
+
+
 
 # compiler forces float to be like '1.0' is this right ? 
 
