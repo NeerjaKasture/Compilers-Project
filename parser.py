@@ -84,6 +84,22 @@ class Concat(AST):
     left: str
     right: str 
 
+@dataclass
+class Function(AST):
+    name: str
+    params: list[tuple[str, str]]  # List of (type, name) pairs
+    return_type: str
+    body: AST  
+
+@dataclass
+class FunctionCall(AST):
+    name: str
+    params: list[str] 
+      
+@dataclass
+class Return(AST):
+    value: AST
+
 # Dictionary to map data types to Python types
 datatypes = {"int": int, "float": float, "bool": bool, "string": str}
 
@@ -95,6 +111,44 @@ def e(tree: AST, env={},types={}): # could also make the env dict global
                 return env[v]
             else:
                 raise NameError(f"Undefined variable: {v}")
+
+        case Function(name, params, return_type, body):  
+            env[name] = tree  
+            return None  
+
+        case FunctionCall(name, args):
+            if name not in env or not isinstance(env[name], Function):
+                raise NameError(f"Undefined function: {name}")
+
+            func = env[name]
+            if len(args) != len(func.params):
+                raise TypeError(f"Function '{name}' expects {len(func.params)} arguments but got {len(args)}")
+
+            # This means that all var in env are global and accessible by function to read only
+            local_env = env.copy()
+            local_types = types.copy()
+
+            # Bind function arguments
+            for (param_type, param_name), arg in zip(func.params, args):
+                arg_value = e(arg, env, types)
+
+                if not isinstance(arg_value, datatypes[param_type]):
+                    raise TypeError(f"Argument '{param_name}' must be of type {param_type}")
+
+                local_env[param_name] = arg_value
+                local_types[param_name] = param_type
+            
+            result = e(func.body, local_env, local_types)
+        
+            if func.return_type != "void" and not isinstance(result, datatypes[func.return_type]):
+                raise TypeError(f"Function '{name}' must return a value of type {func.return_type}, but got {type(result).__name__}")
+
+
+            return result
+        
+        case Return(expr):
+            return e(expr, env, types)
+
         case Boolean(v):
             if v == "true":
                 return True # how would we make our compiler evaluate 'true' as True but still return true as output
@@ -201,9 +255,7 @@ class NumberToken(Token):
 @dataclass
 class ParenthesisToken(Token):
     p: str
-@dataclass
-class SemicolonToken(Token):
-    s: str
+
 @dataclass
 class KeywordToken(Token):
     value: str
@@ -228,8 +280,12 @@ class VariableToken(Token):
 class TypeToken(Token):
     t: str
 
+@dataclass
+class SymbolToken(Token):
+    s: str
+
 # Set of keywords
-keywords = {"if", "then", "else", "true", "false","print","concat","while"}
+keywords = {"if", "then", "else", "true", "false","print","concat","while","def","return","void"}
 
 # Lexer function to tokenize the input string
 def lex(s: str) -> Iterator[Token]:
@@ -277,17 +333,20 @@ def lex(s: str) -> Iterator[Token]:
 
         else:
             match s[i]:
-                case '+' | '*' | '-' | '/' | '^' | '(' | ')' | '<' | '>' | '=' | '!'| '~'|'{'|'}'|';':
+                case '+' | '*' | '-' | '/' | '^' | '(' | ')' | '<' | '>' | '=' | '!'| '~'|'{'|'}'|';'|','|'->':
                     if s[i] in '<>=!' and i + 1 < len(s) and s[i + 1] == '=':
                         yield OperatorToken(s[i:i + 2])
                         i += 2
                     else:
-                        if s[i] in "(){}":
+                        if s[i] in "}(){":
                             yield ParenthesisToken(s[i])
-                        elif s[i]==';':
-                            yield SemicolonToken(s[i])
-                        else:
+                        elif s[i]=='-' and i+1<len(s) and s[i+1]=='>' :
+                            yield SymbolToken('->')
+                            i+=2
+                        elif s[i] in '+ * - / ^ ~':
                             yield OperatorToken(s[i])
+                        else:
+                            yield SymbolToken(s[i])
                         i += 1
                 case _:
                     raise SyntaxError(f"Unexpected character: {s[i]}")
@@ -296,17 +355,117 @@ def lex(s: str) -> Iterator[Token]:
 # Parser function to parse the tokenized input
 def parse(s: str) -> AST:
     t = peekable(lex(s))
-    def parse_sequence():
+
+    def parse_sequence(inside_function=False):  
         statements = []
         while True:
-            stmt = parse_condition()  
-            statements.append(stmt)
             match t.peek(None):
-                case SemicolonToken(';'):
+                case KeywordToken("def"):  # Function definition
+                    statements.append(parse_function())
+                case KeywordToken("return"):
+                    if not inside_function:
+                        raise SyntaxError("Return statement outside Function body")
+                    next(t)  
+                    expr = parse_comparator()  
+                    statements.append(Return(expr))
+
+                    if t.peek(None) == SymbolToken(";"):  
+                        next(t)
+                    else:
+                        raise SyntaxError("Expected ';' after return statement")
+                case _:
+                    stmt = parse_condition()  
+                    statements.append(stmt)
+ 
+            match t.peek(None):
+                case SymbolToken(';'):
                     next(t)
                 case _:
                     break  
         return Sequence(statements) if len(statements) > 1 else statements[0]  
+    
+    def parse_function_call():
+        match t.peek(None):
+            case VariableToken(name):
+                next(t)  # Consume function name
+                
+                if next(t) != ParenthesisToken("("):
+                    raise SyntaxError("Expected '(' after function name")
+
+                args = []
+                while t.peek(None) and not (isinstance(t.peek(None), ParenthesisToken) and t.peek(None).p == ")"):
+                    args.append(parse_comparator())  
+                    
+                    if t.peek(None) == SymbolToken(","):
+                        next(t)  
+                    else:
+                        break
+
+                if next(t) != ParenthesisToken(")"):
+                    raise SyntaxError("Expected ')' after function arguments")
+
+                return FunctionCall(name, args)  
+            case _:
+                raise SyntaxError("Expected function name for function call")
+
+
+    
+    def parse_function():
+        match t.peek(None):
+            case KeywordToken("def"):  # Function return type
+                next(t)  
+                match t.peek(None):
+                    case VariableToken(name):  
+                        next(t)  
+                        if next(t) != ParenthesisToken("("):
+                            raise SyntaxError("Expected '(' after function name")
+                        params = []
+                        
+                        while t.peek(None) and not (isinstance(t.peek(None), ParenthesisToken) and t.peek(None).p == ")"):
+                            
+                            param_type_token = next(t)
+
+                            if not isinstance(param_type_token, TypeToken):  
+                                raise SyntaxError(f"Expected a type for function parameter, got {param_type_token}")
+
+                            param_type = param_type_token.t  
+
+                            param_name_token = next(t)
+
+                            if not isinstance(param_name_token, VariableToken):  
+                                raise SyntaxError(f"Expected a variable name, got {param_name_token}")
+
+                            param_name = param_name_token.v  
+
+                            params.append((param_type, param_name))
+                            
+                            if t.peek(None) == SymbolToken(","):
+                                next(t)  
+                            else:
+                                break 
+                        if next(t) != ParenthesisToken(")"):
+                            raise SyntaxError("Expected ')' after function parameters")
+
+                        if t.peek(None) == SymbolToken("->"):   
+                            next(t)
+                            if not isinstance(t.peek(None), TypeToken):  
+                                raise SyntaxError("Expected return type after '->'")  
+                            return_type = next(t).t
+                        else:
+                            return_type = 'void'
+
+                        if next(t) != ParenthesisToken("{"):
+                            raise SyntaxError("Expected { before function body")
+
+                        body = parse_sequence(inside_function=True)  
+
+                        if next(t) != ParenthesisToken("}"):
+                            raise SyntaxError("Expected } after function body")
+                        
+                        return Function(name, params, return_type, body)
+                    case _:
+                        raise SyntaxError("Expected function name after 'def'")
+
 
     def parse_condition():
         match t.peek(None):
@@ -368,10 +527,13 @@ def parse(s: str) -> AST:
             case VariableToken(var_name):
                 next(t)
                 match t.peek(None):
-                    case OperatorToken('='):
+                    case OperatorToken('='): # assignment
                         next(t)
                         value = parse_comparator()
                         return Assignment(var_name, value)
+                    case ParenthesisToken('('):  # Function call
+                        t.prepend(VariableToken(var_name))  
+                        return parse_function_call()
                     case _:
                         t.prepend(VariableToken(var_name))  # Put back the variable token
                         return parse_comparator()
@@ -548,5 +710,8 @@ def parse(s: str) -> AST:
 # print(e(parse("int x = 4")))
 
 # compiler forces float to be like '1.0' is this right ? 
+print(e(parse("def foo(int x) -> bool {return x;}")))
+print(e(parse("foo(5)")))
 
+# to do for functions : add recursive return 
 
