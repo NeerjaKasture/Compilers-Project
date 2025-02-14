@@ -55,6 +55,10 @@ class Number(AST):
 class Parenthesis(AST):
     expr: AST
 
+@dataclass
+class SemicolonToken(AST):
+    s: str
+
 # AST node for boolean values
 @dataclass
 class Boolean(AST):
@@ -786,13 +790,13 @@ def parse(s: str) -> AST:
 # print(e(parse("if (4>2) then 1 else 0")))  # 1
 # print(e(parse("~4+6/0")))           #division by zero 
 # print(e(parse("int x = 4")))
-print(e(parse('int x=0;for(int i=0; i<2; i=i+1){for(int j=5; j>0; j=j-1){x=x-1};x=x+1}')))
+# print(e(parse('int x=0;for(int i=0; i<2; i=i+1){for(int j=5; j>0; j=j-1){x=x-1};x=x+1}')))
 
 
 
 # compiler forces float to be like '1.0' is this right ? 
-print(e(parse("def foo(int x) -> bool {return x;}")))
-print(e(parse("foo(5)")))
+# print(e(parse("def foo(int x) -> bool {return x;}")))
+# print(e(parse("foo(5)")))
 
 # to do for functions : add recursive return 
 
