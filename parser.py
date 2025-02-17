@@ -55,6 +55,10 @@ class Number(AST):
 class Parenthesis(AST):
     expr: AST
 
+@dataclass
+class SemicolonToken(AST):
+    s: str
+
 # AST node for boolean values
 @dataclass
 class Boolean(AST):
