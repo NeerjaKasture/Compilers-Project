@@ -18,11 +18,7 @@ true+true | error
 int x = 4; x = 8 | [4, 8]
 int x = 4; x = 8; x = 8.0 | error
 float b = 2 | error
-int a = 2; if (a>3) then 2.0*3 else 2*3 | [2, 6]
-if 2>1 then float a = 2.0 else int a = 2 | 2.0
+int x=12;int y=2; if (x < 4) { x=10; y=2} elif (x < 8 ) { x=20; y=30} elif (x < 10) { x=40; y=60} else { x=15; y=45}; y=y+1 | [12, 2, [15, 45], 46]
 bool z = true | True
 z = False | error
-if 2>1 then int a = 2 else int a = 6 | 2
-int x = 0; if 2>3 then x = x+1 else x = x+2 | [0, 2]
-if true and false then 1 else 0 | 0
-if (true and false) then 1 else 0 | 0
+
