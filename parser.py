@@ -825,4 +825,4 @@ def parse(s: str) -> AST:
     return parse_sequence()
 
 # Test cases
-print(e(parse("int x=1;int y=2; if (x < 4) { x=10; y=2} elif (3 > 4 ) { 5} elif (3 > 10) { 7} else { 15}")))
+print(e(parse("int x=12;int y=2; if (x < 4) { x=10; y=2} elif (x < 8 ) { x=20; y=30} elif (x < 10) { x=40; y=60} else { x=15; y=45}; y=y+1")))
