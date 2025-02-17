@@ -1,7 +1,8 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from collections.abc import Iterator
 from more_itertools import peekable
 import sys
+from typing import Optional, List
 
 # Base class for all AST nodes
 class AST:
@@ -27,10 +28,10 @@ class Sequence(AST):
 # AST node for conditional statements
 @dataclass
 class Cond(AST):
-    If: AST
-    Then: AST
-    Else: AST
-
+    If: tuple[AST, AST]  # ('condition', 'body') for the 'if' statement
+    Elif: Optional[List[tuple[AST, AST]]] # Optional list of ('condition', 'body') for each 'elif'
+    Else: Optional[AST] = None 
+    
 # AST node for while loops
 @dataclass
 class While(AST):
@@ -205,8 +206,22 @@ def e(tree: AST, env={},types={}): # could also make the env dict global
                     return e(l) == e(r)
                 case "!=":
                     return e(l) != e(r)
-        case Cond(If, Then, Else):
-            return e(Then) if e(If) else e(Else)
+        case Cond(If, Elif, Else):
+            if e(If[0]):
+                return e(If[1])  # Execute the 'If' body
+
+            # If there are any 'elif' conditions, check each one
+            if Elif:  # Check if Elif is not empty
+                for elif_condition, elif_body in Elif:
+                    if e(elif_condition):  # Evaluating 'elif' condition
+                        return e(elif_body)  # Execute the corresponding 'elif' body
+
+            # If no condition matched, check 'Else' (if exists)
+            if Else is not None:
+                return e(Else)  # Execute the 'Else' body
+
+            # Default return value if no conditions matched
+            return None
         
         case Declaration(var_type, var_name, value):
             val = e(value, env, types)
@@ -314,7 +329,7 @@ class SymbolToken(Token):
     s: str
 
 # Set of keywords
-keywords = {"if", "then", "else", "true", "false","print","concat","while","for", "and", "or", "not","def","return","void"}
+keywords = {"if", "elif", "else", "true", "false","print","concat","while","for", "and", "or", "not","def","return","void"}
 
 # Lexer function to tokenize the input string
 def lex(s: str) -> Iterator[Token]:
@@ -374,7 +389,7 @@ def lex(s: str) -> Iterator[Token]:
                         elif s[i]=='-' and i+1<len(s) and s[i+1]=='>' :
                             yield SymbolToken('->')
                             i+=2
-                        elif s[i] in '+ * - / ^ ~':
+                        elif s[i] in '+ * - / ^ ~><=':
                             yield OperatorToken(s[i])
                         else:
                             yield SymbolToken(s[i])
@@ -500,29 +515,74 @@ def parse(s: str) -> AST:
 
     def parse_condition():
         match t.peek(None):
-            case KeywordToken('if'):  
-                next(t)  
-                condition = parse_comparator()  
+            case KeywordToken('if'):
+                next(t)  # Consume 'if'
 
-                match t.peek(None):
-                    case KeywordToken('then'):
-                        next(t) 
-                    case _:
-                        raise SyntaxError("Expected 'then' after 'if' condition")
+                # Parse the condition inside parentheses
+                if not isinstance(t.peek(None), ParenthesisToken) or t.peek(None).p != '(':
+                    raise SyntaxError("Expected '(' after 'if' keyword")
 
-                then_branch = parse_condition()  
+                next(t)  # Consume '('
+                condition = parse_comparator()
 
-                match t.peek(None):
-                    case KeywordToken('else'):
-                        next(t) 
-                    case _:
-                        # should an if always have an else
-                        # add else if later
-                        raise SyntaxError("Expected 'else' after 'then' branch")
+                closing_paren = next(t, None)  # Consume next token
+                if not isinstance(closing_paren, ParenthesisToken) or closing_paren.p != ')':
+                    raise SyntaxError("Expected ')' after if condition")
 
-                else_branch = parse_condition() 
-                return Cond(condition, then_branch, else_branch)
-            
+                # Parse the if body inside curly brackets
+                if not isinstance(t.peek(None), ParenthesisToken) or t.peek(None).p != '{':
+                    raise SyntaxError("Expected '{' after if condition")
+
+                next(t)  # Consume '{'
+                if_branch = parse_sequence()  # Single expression
+                if t.peek(None) != ParenthesisToken('}'):
+                    raise SyntaxError("Expected '}' after if body")
+                next(t)  # Consume '}'
+
+                # Parse multiple elif branches
+                elif_branches = []
+                while isinstance(t.peek(None), KeywordToken) and t.peek(None).value == 'elif':
+                    next(t)  # Consume 'elif'
+
+                    if not isinstance(t.peek(None), ParenthesisToken) or t.peek(None).p != '(':
+                        raise SyntaxError("Expected '(' after elif keyword")
+
+                    next(t)  # Consume '('
+                    elif_condition = parse_comparator()
+
+                    closing_paren = next(t, None)  # Consume next token
+                    if not isinstance(closing_paren, ParenthesisToken) or closing_paren.p != ')':
+                        raise SyntaxError("Expected ')' after elif condition")
+
+                    # Parse elif body
+                    if not isinstance(t.peek(None), ParenthesisToken) or t.peek(None).p != '{':
+                        raise SyntaxError("Expected '{' after elif condition")
+
+                    next(t)  # Consume '{'
+                    elif_body = parse_sequence()  # Single expression
+                    if t.peek(None) != ParenthesisToken('}'):
+                        raise SyntaxError("Expected '}' after elif body")
+                    next(t)  # Consume '}'
+
+                    elif_branches.append((elif_condition, elif_body))
+
+                # Parse optional else block
+                else_branch = None
+                if isinstance(t.peek(None), KeywordToken) and t.peek(None).value == 'else':
+                    next(t)  # Consume 'else'
+
+                    if not isinstance(t.peek(None), ParenthesisToken) or t.peek(None).p != '{':
+                        raise SyntaxError("Expected '{' after else keyword")
+
+                    next(t)  # Consume '{'
+                    else_branch = parse_sequence()  # Single expression
+                    if t.peek(None) != ParenthesisToken('}'):
+                        raise SyntaxError("Expected '}' after else body")
+                    next(t)  # Consume '}'
+
+                return Cond((condition, if_branch), elif_branches, else_branch)
+
+
             case KeywordToken('for'):
                 next(t)  
                 
@@ -800,3 +860,4 @@ def parse(s: str) -> AST:
 
 # to do for functions : add recursive return 
 
+print(e(parse("int x=1;int y=2; if (x < 4) { x=10; y=2} elif (3 > 4 ) { 5} elif (3 > 10) { 7} else { 15}")))
