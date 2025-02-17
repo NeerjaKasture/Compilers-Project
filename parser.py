@@ -45,7 +45,6 @@ class For(AST):
     increment: AST
     body: list[AST]
 
-
 # AST node for numbers
 @dataclass
 class Number(AST):
@@ -110,11 +109,30 @@ class FunctionCall(AST):
 class Return(AST):
     value: AST
 
+@dataclass
+class Print(AST):
+    value: AST
+
+@dataclass
+class Array(AST):
+    elements: list[AST]
+
+@dataclass
+class ArrayAccess(AST):
+    array: AST
+    index: AST
+
+@dataclass
+class ArrayAssignment(AST):
+    array: AST
+    index: AST
+    value: AST
+
 # Dictionary to map data types to Python types
 datatypes = {"int": int, "float": float, "bool": bool, "string": str}
 
 # Function to evaluate the AST
-def e(tree: AST, env={},types={}): # could also make the env dict global 
+def e(tree: AST, env={}, types={}): # could also make the env dict global 
     match tree:
         case Variable(v):
             if v in env:
@@ -152,7 +170,6 @@ def e(tree: AST, env={},types={}): # could also make the env dict global
         
             if func.return_type != "void" and not isinstance(result, datatypes[func.return_type]):
                 raise TypeError(f"Function '{name}' must return a value of type {func.return_type}, but got {type(result).__name__}")
-
 
             return result
         
@@ -244,7 +261,7 @@ def e(tree: AST, env={},types={}): # could also make the env dict global
 
             if not isinstance(val, datatypes[types[var_name]]):
                 raise TypeError(f"Variable '{var_name}' must be of type {types[var_name]}")
-            
+
             env[var_name] = val
             return val
         
@@ -285,11 +302,29 @@ def e(tree: AST, env={},types={}): # could also make the env dict global
                 raise TypeError("Concat can only be used with String")
 
             return left_val + right_val 
+        case Print(value):
+            print(e(value, env, types))
+            return None
+        case Array(elements):
+            return [e(element, env, types) for element in elements]
+        case ArrayAccess(array, index):
+            array_val = e(array, env, types)
+            index_val = e(index, env, types)
+            if not isinstance(array_val, list):
+                raise TypeError("Array access can only be used with arrays")
+            return array_val[index_val]
+        case ArrayAssignment(array, index, value):
+            array_val = e(array, env, types)
+            index_val = e(index, env, types)
+            value_val = e(value, env, types)
+            if not isinstance(array_val, list):
+                raise TypeError("Array assignment can only be used with arrays")
+            array_val[index_val] = value_val
+            return value_val
 
 # Base class for all tokens
 class Token:
     pass
-
 
 # Token classes for different types of tokens
 @dataclass
@@ -329,12 +364,17 @@ class SymbolToken(Token):
     s: str
 
 # Set of keywords
-keywords = {"if", "elif", "else", "true", "false","print","concat","while","for", "and", "or", "not","def","return","void"}
+keywords = {"if", "elif", "else", "true", "false", "print", "concat", "while", "for", "and", "or", "not", "def", "return", "void"}
+
+class ParseError(Exception):
+    def __init__(self, message, token):
+        super().__init__(f"Error at token {token}: {message}")
+        self.token = token
 
 # Lexer function to tokenize the input string
 def lex(s: str) -> Iterator[Token]:
     i = 0
-    while i<len(s):
+    while i < len(s):
         while i < len(s) and s[i].isspace():
             i += 1
 
@@ -361,7 +401,7 @@ def lex(s: str) -> Iterator[Token]:
         elif s[i].isdigit():
             t = s[i]
             i += 1
-            has_decimal=False
+            has_decimal = False
             while i < len(s) and (s[i].isdigit() or (s[i] == '.' and not has_decimal)):
                 if s[i] == '.':
                     has_decimal = True
@@ -379,450 +419,575 @@ def lex(s: str) -> Iterator[Token]:
 
         else:
             match s[i]:
-                case '+' | '*' | '-' | '/' | '^' | '(' | ')' | '<' | '>' | '=' | '!'| '~'|'{'|'}'|';'|','|'->':
+                case '+' | '*' | '-' | '/' | '^' | '(' | ')' | '<' | '>' | '=' | '!' | '~' | '{' | '}' | ';' | ',' | '[' | ']' | '->':
                     if s[i] in '<>=!' and i + 1 < len(s) and s[i + 1] == '=':
                         yield OperatorToken(s[i:i + 2])
                         i += 2
                     else:
-                        if s[i] in "}(){":
+                        if s[i] in "}(){[]":
                             yield ParenthesisToken(s[i])
-                        elif s[i]=='-' and i+1<len(s) and s[i+1]=='>' :
+                        elif s[i] == '-' and i + 1 < len(s) and s[i + 1] == '>':
                             yield SymbolToken('->')
-                            i+=2
+                            i += 2
                         elif s[i] in '+ * - / ^ ~><=':
                             yield OperatorToken(s[i])
                         else:
                             yield SymbolToken(s[i])
                         i += 1
                 case _:
-                    raise SyntaxError(f"Unexpected character: {s[i]}")
-
+                    raise ParseError(f"Unexpected character: {s[i]}", s[i])
 
 # Parser function to parse the tokenized input
 def parse(s: str) -> AST:
     t = peekable(lex(s))
 
-    def parse_sequence(inside_function=False):  
+    def parse_sequence(inside_function=False):
         statements = []
         while True:
-            match t.peek(None):
-                case KeywordToken("def"):  # Function definition
-                    statements.append(parse_function())
-                case KeywordToken("return"):
-                    if not inside_function:
-                        raise SyntaxError("Return statement outside Function body")
-                    next(t)  
-                    expr = parse_comparator()  
-                    statements.append(Return(expr))
-
-                    if t.peek(None) == SymbolToken(";"):  
-                        next(t)
-                    else:
-                        raise SyntaxError("Expected ';' after return statement")
-                case _:
-                    stmt = parse_condition()  
-                    statements.append(stmt)
- 
-            match t.peek(None):
-                case SymbolToken(';'):
-                    next(t)
-                case _:
-                    break  
-        return Sequence(statements) if len(statements) > 1 else statements[0]  
-    
-    def parse_function_call():
-        match t.peek(None):
-            case VariableToken(name):
-                next(t)  # Consume function name
-                
-                if next(t) != ParenthesisToken("("):
-                    raise SyntaxError("Expected '(' after function name")
-
-                args = []
-                while t.peek(None) and not (isinstance(t.peek(None), ParenthesisToken) and t.peek(None).p == ")"):
-                    args.append(parse_comparator())  
-                    
-                    if t.peek(None) == SymbolToken(","):
-                        next(t)  
-                    else:
-                        break
-
-                if next(t) != ParenthesisToken(")"):
-                    raise SyntaxError("Expected ')' after function arguments")
-
-                return FunctionCall(name, args)  
-            case _:
-                raise SyntaxError("Expected function name for function call")
-
-
-    
-    def parse_function():
-        match t.peek(None):
-            case KeywordToken("def"):  # Function return type
-                next(t)  
+            try:
                 match t.peek(None):
-                    case VariableToken(name):  
-                        next(t)  
-                        if next(t) != ParenthesisToken("("):
-                            raise SyntaxError("Expected '(' after function name")
-                        params = []
-                        
-                        while t.peek(None) and not (isinstance(t.peek(None), ParenthesisToken) and t.peek(None).p == ")"):
-                            
-                            param_type_token = next(t)
+                    case KeywordToken("def"):  # Function definition
+                        statements.append(parse_function())
+                    case KeywordToken("return"):
+                        if not inside_function:
+                            raise ParseError("Return statement outside Function body", t.peek())
+                        next(t)
+                        expr = parse_comparator()
+                        statements.append(Return(expr))
 
-                            if not isinstance(param_type_token, TypeToken):  
-                                raise SyntaxError(f"Expected a type for function parameter, got {param_type_token}")
-
-                            param_type = param_type_token.t  
-
-                            param_name_token = next(t)
-
-                            if not isinstance(param_name_token, VariableToken):  
-                                raise SyntaxError(f"Expected a variable name, got {param_name_token}")
-
-                            param_name = param_name_token.v  
-
-                            params.append((param_type, param_name))
-                            
-                            if t.peek(None) == SymbolToken(","):
-                                next(t)  
-                            else:
-                                break 
-                        if next(t) != ParenthesisToken(")"):
-                            raise SyntaxError("Expected ')' after function parameters")
-
-                        if t.peek(None) == SymbolToken("->"):   
+                        if t.peek(None) == SymbolToken(";"):
                             next(t)
-                            if not isinstance(t.peek(None), TypeToken):  
-                                raise SyntaxError("Expected return type after '->'")  
-                            return_type = next(t).t
                         else:
-                            return_type = 'void'
-
-                        if next(t) != ParenthesisToken("{"):
-                            raise SyntaxError("Expected { before function body")
-
-                        body = parse_sequence(inside_function=True)  
-
-                        if next(t) != ParenthesisToken("}"):
-                            raise SyntaxError("Expected } after function body")
-                        
-                        return Function(name, params, return_type, body)
+                            raise ParseError("Expected ';' after return statement", t.peek())
+                    case KeywordToken("print"):
+                        next(t)  # Consume 'print'
+                        expr = parse_comparator()  # Parse the expression to print
+                        statements.append(Print(expr))
+                        if t.peek(None) == SymbolToken(";"):
+                            next(t)
+                        else:
+                            raise ParseError("Expected ';' after print statement", t.peek())
+                    case ParenthesisToken('}'):
+                        next(t)  # Consume '}'
+                        break  # End of block
                     case _:
-                        raise SyntaxError("Expected function name after 'def'")
+                        stmt = parse_condition()
+                        statements.append(stmt)
 
+                match t.peek(None):
+                    case SymbolToken(';'):
+                        next(t)
+                    case _:
+                        break
+            except ParseError as e:
+                print(e)
+                break
+        return Sequence(statements) if len(statements) > 1 else statements[0]
+
+    def parse_function_call():
+        try:
+            match t.peek(None):
+                case VariableToken(name):
+                    next(t)  # Consume function name
+
+                    if next(t) != ParenthesisToken("("):
+                        raise ParseError("Expected '(' after function name", t.peek())
+
+                    args = []
+                    while t.peek(None) and not (isinstance(t.peek(None), ParenthesisToken) and t.peek(None).p == ")"):
+                        args.append(parse_comparator())
+
+                        if t.peek(None) == SymbolToken(","):
+                            next(t)
+                        else:
+                            break
+
+                    if next(t) != ParenthesisToken(")"):
+                        raise ParseError("Expected ')' after function arguments", t.peek())
+
+                    return FunctionCall(name, args)
+                case _:
+                    raise ParseError("Expected function name for function call", t.peek())
+        except ParseError as e:
+            print(e)
+            return None
+
+    def parse_function():
+        try:
+            match t.peek(None):
+                case KeywordToken("def"):  # Function return type
+                    next(t)
+                    match t.peek(None):
+                        case VariableToken(name):
+                            next(t)
+                            if next(t) != ParenthesisToken("("):
+                                raise ParseError("Expected '(' after function name", t.peek())
+                            params = []
+
+                            while t.peek(None) and not (isinstance(t.peek(None), ParenthesisToken) and t.peek(None).p == ")"):
+                                param_type_token = next(t)
+
+                                if not isinstance(param_type_token, TypeToken):
+                                    raise ParseError(f"Expected a type for function parameter, got {param_type_token}", t.peek())
+
+                                param_type = param_type_token.t
+
+                                param_name_token = next(t)
+
+                                if not isinstance(param_name_token, VariableToken):
+                                    raise ParseError(f"Expected a variable name, got {param_name_token}", t.peek())
+
+                                param_name = param_name_token.v
+
+                                params.append((param_type, param_name))
+
+                                if t.peek(None) == SymbolToken(","):
+                                    next(t)
+                                else:
+                                    break
+                            if next(t) != ParenthesisToken(")"):
+                                raise ParseError("Expected ')' after function parameters", t.peek())
+
+                            if t.peek(None) == SymbolToken("->"):
+                                next(t)
+                                if not isinstance(t.peek(None), TypeToken):
+                                    raise ParseError("Expected return type after '->'", t.peek())
+                                return_type = next(t).t
+                            else:
+                                return_type = 'void'
+
+                            if next(t) != ParenthesisToken("{"):
+                                raise ParseError("Expected { before function body", t.peek())
+
+                            body = parse_sequence(inside_function=True)
+
+                            if next(t) != ParenthesisToken("}"):
+                                raise ParseError("Expected } after function body", t.peek())
+
+                            return Function(name, params, return_type, body)
+                        case _:
+                            raise ParseError("Expected function name after 'def'", t.peek())
+        except ParseError as e:
+            print(e)
+            return None
 
     def parse_condition():
-        match t.peek(None):
-            case KeywordToken('if'):
-                next(t)  # Consume 'if'
+        try:
+            match t.peek(None):
+                case KeywordToken('if'):
+                    next(t)  # Consume 'if'
 
-                # Parse the condition inside parentheses
-                if not isinstance(t.peek(None), ParenthesisToken) or t.peek(None).p != '(':
-                    raise SyntaxError("Expected '(' after 'if' keyword")
-
-                next(t)  # Consume '('
-                condition = parse_comparator()
-
-                closing_paren = next(t, None)  # Consume next token
-                if not isinstance(closing_paren, ParenthesisToken) or closing_paren.p != ')':
-                    raise SyntaxError("Expected ')' after if condition")
-
-                # Parse the if body inside curly brackets
-                if not isinstance(t.peek(None), ParenthesisToken) or t.peek(None).p != '{':
-                    raise SyntaxError("Expected '{' after if condition")
-
-                next(t)  # Consume '{'
-                if_branch = parse_sequence()  # Single expression
-                if t.peek(None) != ParenthesisToken('}'):
-                    raise SyntaxError("Expected '}' after if body")
-                next(t)  # Consume '}'
-
-                # Parse multiple elif branches
-                elif_branches = []
-                while isinstance(t.peek(None), KeywordToken) and t.peek(None).value == 'elif':
-                    next(t)  # Consume 'elif'
-
+                    # Parse the condition inside parentheses
                     if not isinstance(t.peek(None), ParenthesisToken) or t.peek(None).p != '(':
-                        raise SyntaxError("Expected '(' after elif keyword")
+                        raise ParseError("Expected '(' after 'if' keyword", t.peek())
 
                     next(t)  # Consume '('
-                    elif_condition = parse_comparator()
+                    condition = parse_comparator()
 
                     closing_paren = next(t, None)  # Consume next token
                     if not isinstance(closing_paren, ParenthesisToken) or closing_paren.p != ')':
-                        raise SyntaxError("Expected ')' after elif condition")
+                        raise ParseError("Expected ')' after if condition", t.peek())
 
-                    # Parse elif body
+                    # Parse the if body inside curly brackets
                     if not isinstance(t.peek(None), ParenthesisToken) or t.peek(None).p != '{':
-                        raise SyntaxError("Expected '{' after elif condition")
+                        raise ParseError("Expected '{' after if condition", t.peek())
 
                     next(t)  # Consume '{'
-                    elif_body = parse_sequence()  # Single expression
+                    if_branch = parse_sequence()  # Single expression
                     if t.peek(None) != ParenthesisToken('}'):
-                        raise SyntaxError("Expected '}' after elif body")
+                        raise ParseError("Expected '}' after if body", t.peek())
                     next(t)  # Consume '}'
 
-                    elif_branches.append((elif_condition, elif_body))
+                    # Parse multiple elif branches
+                    elif_branches = []
+                    while isinstance(t.peek(None), KeywordToken) and t.peek(None).value == 'elif':
+                        next(t)  # Consume 'elif'
 
-                # Parse optional else block
-                else_branch = None
-                if isinstance(t.peek(None), KeywordToken) and t.peek(None).value == 'else':
-                    next(t)  # Consume 'else'
+                        if not isinstance(t.peek(None), ParenthesisToken) or t.peek(None).p != '(':
+                            raise ParseError("Expected '(' after elif keyword", t.peek())
 
-                    if not isinstance(t.peek(None), ParenthesisToken) or t.peek(None).p != '{':
-                        raise SyntaxError("Expected '{' after else keyword")
+                        next(t)  # Consume '('
+                        elif_condition = parse_comparator()
 
-                    next(t)  # Consume '{'
-                    else_branch = parse_sequence()  # Single expression
-                    if t.peek(None) != ParenthesisToken('}'):
-                        raise SyntaxError("Expected '}' after else body")
-                    next(t)  # Consume '}'
+                        closing_paren = next(t, None)  # Consume next token
+                        if not isinstance(closing_paren, ParenthesisToken) or closing_paren.p != ')':
+                            raise ParseError("Expected ')' after elif condition", t.peek())
 
-                return Cond((condition, if_branch), elif_branches, else_branch)
+                        # Parse elif body
+                        if not isinstance(t.peek(None), ParenthesisToken) or t.peek(None).p != '{':
+                            raise ParseError("Expected '{' after elif condition", t.peek())
 
+                        next(t)  # Consume '{'
+                        elif_body = parse_sequence()  # Single expression
+                        if t.peek(None) != ParenthesisToken('}'):
+                            raise ParseError("Expected '}' after elif body", t.peek())
+                        next(t)  # Consume '}'
 
-            case KeywordToken('for'):
-                next(t)  
-                
-                match t.peek(None):
-                    case ParenthesisToken('('):
-                        next(t)  
-                        init = parse_assignment()  # Parse initialization (e.g., int i = 0)
-                        
-                        match next(t, None):
-                            case SemicolonToken(';'):
-                                pass
-                            case _:
-                                raise SyntaxError("Expected ';' after for-loop initialization")
+                        elif_branches.append((elif_condition, elif_body))
 
-                        condition = parse_comparator()  # Parse condition (e.g., i < 10)
-                        
-                        match next(t, None):
-                            case SemicolonToken(';'):
-                                pass
-                            case _:
-                                raise SyntaxError("Expected ';' after for-loop condition")
+                    # Parse optional else block
+                    else_branch = None
+                    if isinstance(t.peek(None), KeywordToken) and t.peek(None).value == 'else':
+                        next(t)  # Consume 'else'
 
-                        increment = parse_assignment()  # Parse increment (e.g., i = i + 1)
-                        
-                        match next(t, None):
-                            case ParenthesisToken(')'):
-                                pass
-                            case _:
-                                raise SyntaxError("Expected ')' after for-loop increment")
+                        if not isinstance(t.peek(None), ParenthesisToken) or t.peek(None).p != '{':
+                            raise ParseError("Expected '{' after else keyword", t.peek())
 
-                    case _:
-                        raise SyntaxError("Expected '(' after 'for' keyword")
+                        next(t)  # Consume '{'
+                        else_branch = parse_sequence()  # Single expression
+                        if t.peek(None) != ParenthesisToken('}'):
+                            raise ParseError("Expected '}' after else body", t.peek())
+                        next(t)  # Consume '}'
 
-                match t.peek(None):
-                    case ParenthesisToken('{'):
-                        next(t)  
-                        body = []
-                        while t.peek(None) != ParenthesisToken('}'):
-                            body.append(parse_sequence())  
-                        next(t)  
-                        return For(init, condition, increment, body)
+                    return Cond((condition, if_branch), elif_branches, else_branch)
 
-                    case _:
-                        raise SyntaxError("Expected '{' after for-loop definition")
+                case KeywordToken('for'):
+                    next(t)
 
-            case KeywordToken('while'):
-                next(t)  
-                
-                match t.peek(None):
-                    case ParenthesisToken('('):
-                        next(t)  
-                        condition = parse_comparator()  
-                        
-                        match next(t, None):
-                            case ParenthesisToken(')'): 
-                                pass
-                            case _:
-                                raise SyntaxError("Expected ')' after while condition")
-                    case _:
-                        raise SyntaxError("Expected '(' after 'while' keyword")
-                
-                match t.peek(None):
-                    case ParenthesisToken('{'):
-                        next(t)  
-                        body = []
-                        while t.peek(None) != ParenthesisToken('}'):
-                            body.append(parse_sequence())  
-                        next(t)  
-                        return While(condition, body)
-                
-                    case _:
-                        raise SyntaxError("Expected '{' after while condition")
-            case _:
-                return parse_assignment() 
-    
+                    match t.peek(None):
+                        case ParenthesisToken('('):
+                            next(t)
+                            init = parse_assignment()  # Parse initialization (e.g., int i = 0)
+
+                            match next(t, None):
+                                case SymbolToken(';'):
+                                    pass
+                                case _:
+                                    raise ParseError("Expected ';' after for-loop initialization", t.peek())
+
+                            condition = parse_comparator()  # Parse condition (e.g., i < 10)
+
+                            match next(t, None):
+                                case SymbolToken(';'):
+                                    pass
+                                case _:
+                                    raise ParseError("Expected ';' after for-loop condition", t.peek())
+
+                            increment = parse_assignment()  # Parse increment (e.g., i = i + 1)
+
+                            match next(t, None):
+                                case ParenthesisToken(')'):
+                                    pass
+                                case _:
+                                    raise ParseError("Expected ')' after for-loop increment", t.peek())
+
+                        case _:
+                            raise ParseError("Expected '(' after 'for' keyword", t.peek())
+
+                    match t.peek(None):
+                        case ParenthesisToken('{'):
+                            next(t)
+                            body = parse_sequence()  # Parse the body of the for loop
+                            if t.peek(None) != ParenthesisToken('}'):
+                                raise ParseError("Expected '}' after for-loop body", t.peek())
+                            next(t)  # Consume '}'
+                            return For(init, condition, increment, body)
+
+                        case _:
+                            raise ParseError("Expected '{' after for-loop definition", t.peek())
+
+                case KeywordToken('while'):
+                    next(t)
+
+                    match t.peek(None):
+                        case ParenthesisToken('('):
+                            next(t)
+                            condition = parse_comparator()
+
+                            match next(t, None):
+                                case ParenthesisToken(')'):
+                                    pass
+                                case _:
+                                    raise ParseError("Expected ')' after while condition", t.peek())
+                        case _:
+                            raise ParseError("Expected '(' after 'while' keyword", t.peek())
+
+                    match t.peek(None):
+                        case ParenthesisToken('{'):
+                            next(t)
+                            body = parse_sequence()  # Parse the body of the while loop
+                            if t.peek(None) != ParenthesisToken('}'):
+                                raise ParseError("Expected '}' after while-loop body", t.peek())
+                            next(t)  # Consume '}'
+                            return While(condition, body)
+
+                        case _:
+                            raise ParseError("Expected '{' after while condition", t.peek())
+                case _:
+                    return parse_assignment()
+        except ParseError as e:
+            print(e)
+            return None
+
     def parse_assignment():
-        match t.peek(None):
-            case VariableToken(var_name):
-                next(t)
-                match t.peek(None):
-                    case OperatorToken('='): # assignment
-                        next(t)
-                        value = parse_comparator()
-                        return Assignment(var_name, value)
-                    case ParenthesisToken('('):  # Function call
-                        t.prepend(VariableToken(var_name))  
-                        return parse_function_call()
-                    case _:
-                        t.prepend(VariableToken(var_name))  # Put back the variable token
-                        return parse_comparator()
-            case _:
-                return parse_declaration()
-
-    def parse_declaration():
-        match t.peek(None):
-            case TypeToken(var_type):
-                if var_type not in datatypes.keys():
-                    raise TypeError(f"Invalid type: {var_type}")
-                else :
+        try:
+            match t.peek(None):
+                case VariableToken(var_name):
                     next(t)
                     match t.peek(None):
-                        case VariableToken(var_name):
-                            if var_name in keywords:
-                                raise SyntaxError(f"Invalid variable name: {var_name}")
-                            else:
+                        case OperatorToken('='):  # assignment
+                            next(t)
+                            value = parse_comparator()
+                            return Assignment(var_name, value)
+                        case ParenthesisToken('('):  # Function call
+                            t.prepend(VariableToken(var_name))
+                            return parse_function_call()
+                        case ParenthesisToken('['):  # Array access or assignment
+                            next(t)
+                            index = parse_comparator()
+                            if next(t) != ParenthesisToken(']'):
+                                raise ParseError("Expected ']' after array index", t.peek())
+                            if t.peek(None) == OperatorToken('='):
                                 next(t)
-                                match t.peek(None):
-                                    case OperatorToken('='):
-                                        next(t)
-                                        value = parse_comparator()
-                                        return Declaration(var_type, var_name, value)
-                                    case _:
-                                        raise SyntaxError("Expected '=' after variable name")
+                                value = parse_comparator()
+                                return ArrayAssignment(Variable(var_name), index, value)
+                            return ArrayAccess(Variable(var_name), index)
                         case _:
-                            raise SyntaxError("Expected variable name")
-            case _:
-                return parse_comparator()
+                            t.prepend(VariableToken(var_name))  # Put back the variable token
+                            return parse_comparator()
+                case _:
+                    return parse_declaration()
+        except ParseError as e:
+            print(e)
+            return None
+
+    def parse_declaration():
+        try:
+            match t.peek(None):
+                case TypeToken(var_type):
+                    if var_type not in datatypes.keys():
+                        raise ParseError(f"Invalid type: {var_type}", t.peek())
+                    else:
+                        next(t)
+                        match t.peek(None):
+                            case VariableToken(var_name):
+                                if var_name in keywords:
+                                    raise ParseError(f"Invalid variable name: {var_name}", t.peek())
+                                else:
+                                    next(t)
+                                    match t.peek(None):
+                                        case OperatorToken('='):
+                                            next(t)
+                                            value = parse_comparator()
+                                            return Declaration(var_type, var_name, value)
+                                        case ParenthesisToken('['):  # Array declaration
+                                            next(t)
+                                            elements = []
+                                            while t.peek(None) and not (isinstance(t.peek(None), ParenthesisToken) and t.peek(None).p == "]"):
+                                                elements.append(parse_comparator())
+                                                if t.peek(None) == SymbolToken(","):
+                                                    next(t)
+                                                else:
+                                                    break
+                                            if next(t) != ParenthesisToken("]"):
+                                                raise ParseError("Expected ']' after array elements", t.peek())
+                                            return Declaration(var_type, var_name, Array(elements))
+                                        case _:
+                                            raise ParseError("Expected '=' or '[' after variable name", t.peek())
+                            case _:
+                                raise ParseError("Expected variable name", t.peek())
+                case _:
+                    return parse_comparator()
+        except ParseError as e:
+            print(e)
+            return None
 
     def parse_comparator():
-        ast = parse_add()
-        while True:
-            match t.peek(None):
-                case OperatorToken(op):
-                    if op in {"<", ">", "==", "!="}:
-                        next(t)
-                        ast = BinOp(op, ast, parse_add())
-                    elif op in {"and", "or"}:
-                        next(t)
-                        ast = BinOp(op, ast, parse_add())
-                    elif op in {"not"}:
-                        next(t)
-                        ast = BinOp(op, ast, parse_add())
-                    else:
-                        raise SyntaxError("Unexpected operator")
-                case _:
-                    return ast
+        try:
+            ast = parse_add()
+            while True:
+                match t.peek(None):
+                    case OperatorToken(op):
+                        if op in {"<", ">", "==", "!="}:
+                            next(t)
+                            ast = BinOp(op, ast, parse_add())
+                        elif op in {"and", "or"}:
+                            next(t)
+                            ast = BinOp(op, ast, parse_add())
+                        elif op in {"not"}:
+                            next(t)
+                            ast = BinOp(op, ast, parse_add())
+                        else:
+                            raise ParseError("Unexpected operator", t.peek())
+                    case _:
+                        return ast
+        except ParseError as e:
+            print(e)
+            return None
 
     def parse_add():
-        ast = parse_sub()
-        while True:
-            match t.peek(None):
-                case OperatorToken('+'):
-                    next(t)
-                    ast = BinOp('+', ast, parse_sub())
-                case _:
-                    return ast
-                
-    def parse_sub():
-        ast = parse_mul()
-        while True:
-            match t.peek(None):
-                case OperatorToken('-'):
-                    next(t)
-                    ast = BinOp('-', ast, parse_mul())
-                case _:
-                    return ast
+        try:
+            ast = parse_sub()
+            while True:
+                match t.peek(None):
+                    case OperatorToken('+'):
+                        next(t)
+                        ast = BinOp('+', ast, parse_sub())
+                    case _:
+                        return ast
+        except ParseError as e:
+            print(e)
+            return None
 
+    def parse_sub():
+        try:
+            ast = parse_mul()
+            while True:
+                match t.peek(None):
+                    case OperatorToken('-'):
+                        next(t)
+                        ast = BinOp('-', ast, parse_mul())
+                    case _:
+                        return ast
+        except ParseError as e:
+            print(e)
+            return None
 
     def parse_mul():
-        ast = parse_div()
-        while True:
-            match t.peek(None):
-                case OperatorToken('*'):
-                    next(t)
-                    ast = BinOp('*', ast, parse_div())
-                case _:
-                    return ast
+        try:
+            ast = parse_div()
+            while True:
+                match t.peek(None):
+                    case OperatorToken('*'):
+                        next(t)
+                        ast = BinOp('*', ast, parse_div())
+                    case _:
+                        return ast
+        except ParseError as e:
+            print(e)
+            return None
 
     def parse_div():
-        ast = parse_exponent()
-        while True:
-            match t.peek(None):
-                case OperatorToken('/'):
-                    next(t)
-                    divisor = parse_exponent()
-                    ast = BinOp('/', ast, divisor)
-                case _:
-                    return ast
-
+        try:
+            ast = parse_exponent()
+            while True:
+                match t.peek(None):
+                    case OperatorToken('/'):
+                        next(t)
+                        divisor = parse_exponent()
+                        ast = BinOp('/', ast, divisor)
+                    case _:
+                        return ast
+        except ParseError as e:
+            print(e)
+            return None
 
     def parse_exponent():
-        ast = parse_atom()
-        while True:
-            match t.peek(None):
-                case OperatorToken('^'):
-                    next(t)
-                    ast = BinOp('^', ast, parse_exponent())
-                case _:
-                    return ast
+        try:
+            ast = parse_atom()
+            while True:
+                match t.peek(None):
+                    case OperatorToken('^'):
+                        next(t)
+                        ast = BinOp('^', ast, parse_exponent())
+                    case _:
+                        return ast
+        except ParseError as e:
+            print(e)
+            return None
 
     def parse_atom():
-        match t.peek(None):
-            case KeywordToken('concat'):
-                next(t)
-                match t.peek(None):
-                    case ParenthesisToken('('):
-                        next(t)
-                        left = parse_atom()
-                        match t.peek(None):
-                            case OperatorToken(','):
-                                next(t)
-                                right = parse_atom()
-                                match t.peek(None):
-                                    case ParenthesisToken(')'):
-                                        next(t)
-                                        return Concat(left, right)
-                                    case _:
-                                        raise SyntaxError("Expected ')'")
-                            case _:
-                                raise SyntaxError("Expected ','")
-                    case _:
-                        raise SyntaxError("Expected '('")
-            case OperatorToken('~'):  # Check for the tilde operator
-                next(t)
-                return BinOp('*', Number('-1'), parse_atom())
-            case VariableToken(v):
-                next(t)
-                return Variable(v)
-            case NumberToken(v):
-                next(t)
-                return Number(v)
-            case BooleanToken(v):
-                next(t)
-                return Boolean(v)
-            case ParenthesisToken('('):
-                next(t)
-                expr = parse_comparator()  
-                match next(t, None):
-                    case ParenthesisToken(')'):
-                        return Parenthesis(expr)
-                    case _:
-                        raise SyntaxError("Expected ')'")
-            case StringToken(v):
-                next(t)
-                return String(v)
-            case _:
-                print(*t)
-                raise SyntaxError("Unexpected token")
+        try:
+            match t.peek(None):
+                case KeywordToken('concat'):
+                    next(t)
+                    match t.peek(None):
+                        case ParenthesisToken('('):
+                            next(t)
+                            left = parse_atom()
+                            match t.peek(None):
+                                case OperatorToken(','):
+                                    next(t)
+                                    right = parse_atom()
+                                    match t.peek(None):
+                                        case ParenthesisToken(')'):
+                                            next(t)
+                                            return Concat(left, right)
+                                        case _:
+                                            raise ParseError("Expected ')' after concat arguments", t.peek())
+                                case _:
+                                    raise ParseError("Expected ',' after first concat argument", t.peek())
+                        case _:
+                            raise ParseError("Expected '(' after 'concat'", t.peek())
+                case OperatorToken('~'):  # Check for the tilde operator
+                    next(t)
+                    return BinOp('*', Number('-1'), parse_atom())
+                case VariableToken(v):
+                    next(t)
+                    return Variable(v)
+                case NumberToken(v):
+                    next(t)
+                    return Number(v)
+                case BooleanToken(v):
+                    next(t)
+                    return Boolean(v)
+                case ParenthesisToken('('):
+                    next(t)
+                    expr = parse_comparator()
+                    match next(t, None):
+                        case ParenthesisToken(')'):
+                            return Parenthesis(expr)
+                        case _:
+                            raise ParseError("Expected ')' after expression", t.peek())
+                case StringToken(v):
+                    next(t)
+                    return String(v)
+                case ParenthesisToken('['):
+                    next(t)
+                    elements = []
+                    while t.peek(None) and not (isinstance(t.peek(None), ParenthesisToken) and t.peek(None).p == "]"):
+                        elements.append(parse_comparator())
+                        if t.peek(None) == SymbolToken(","):
+                            next(t)
+                        else:
+                            break
+                    if next(t) != ParenthesisToken("]"):
+                        raise ParseError("Expected ']' after array elements", t.peek())
+                    return Array(elements)
+                case _:
+                    raise ParseError(f"Unexpected token: {t.peek(None)}", t.peek())
+        except ParseError as e:
+            print(e)
+            return None
 
     return parse_sequence()
 
+def run_test(code):
+    try:
+        ast = parse(code)
+        result = e(ast)
+        # print(f"Result: {result}")
+    except Exception as ex:
+        print(f"Error: {ex}")
+
 # Test cases
-print(e(parse("int x=12;int y=2; if (x < 4) { x=10; y=2} elif (x < 8 ) { x=20; y=30} elif (x < 10) { x=40; y=60} else { x=15; y=45}; y=y+1")))
+print(e(parse("int x=12; print(x);")))  # Test printing an integer variable
+print(e(parse("int x=12; int y=2; if (x < 4) { x=10; y=2} elif (x < 8 ) { x=20; y=30} elif (x < 10) { x=40; y=60} else { x=15; y=45}; print(y);")))  # Test printing after conditional statements
+# Additional test cases
+run_test("int x=12; print(x);")  # Expected output: 12
+run_test("int x=12; int y=2; if (x < 4) { x=10; y=2} elif (x < 8 ) { x=20; y=30} elif (x < 10) { x=40; y=60} else { x=15; y=45}; print(y);")  # Expected output: 45
+
+# Loop test cases
+run_test("int i=0; while (i < 3) { print(i); i = i + 1; }")  # Expected output: 0 1 2
+run_test("for (int i=0; i<3; i=i+1) {print(i);}")  # Expected output: 0 1 2
+
+# Data structure test cases
+run_test("int[] arr = [1, 2, 3]; print(arr[0], arr[1], arr[2]);")  # Expected output: 1 2 3
+run_test("int[] arr = [1, 2, 3]; arr[1] = 10; print(arr[0], arr[1], arr[2]);")  # Expected output: 1 10 3
+
+# Expression test cases
+run_test("int a=5; int b=10; print(a + b);")  # Expected output: 15
+run_test("int a=5; int b=10; print(a * b);")  # Expected output: 50
+run_test("int a=5; int b=10; print(a < b);")  # Expected output: True
+run_test("int a=5; int b=10; print(a > b);")  # Expected output: False
+run_test("int a=5; int b=10; print(a == b);")  # Expected output: False
+run_test("int a=5; int b=10; print(a != b);")  # Expected output: True
+
+# Invalid test cases
+print("\nInvalid Test Cases:")
+run_test("int x=12; print(x")  # Missing closing parenthesis
+run_test("int x=12; int y=2; if (x < 4 { x=10; y=2} else { x=15; y=45}; print(y);")  # Missing closing parenthesis in if condition
+run_test("int x=12; int y=2; if x < 4) { x=10; y=2} else { x=15; y=45}; print(y);")  # Missing opening parenthesis in if condition
+run_test("int x=12; int y=2; if (x < 4) { x=10; y=2 else { x=15; y=45}; print(y);")  # Missing closing brace in if body
+run_test("int x=12; int y=2; if (x < 4) { x=10; y=2} elif (x < 8 ) { x=20; y=30 elif (x < 10) { x=40; y=60} else { x=15; y=45}; print(y);")  # Missing closing parenthesis in elif condition
+run_test("int x=12; int y=2; if (x < 4) { x=10; y=2} elif (x < 8 ) { x=20; y=30} elif (x < 10) { x=40; y=60} else { x=15; y=45; print(y);")  # Missing closing brace in else body
