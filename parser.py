@@ -825,39 +825,4 @@ def parse(s: str) -> AST:
     return parse_sequence()
 
 # Test cases
-# print(e(parse("")))         #
-# print(e(parse("2+3^2")))         # 11
-# print(e(parse("3 != 2")))        # 0
-# print(e(parse("(2+3) > 4")))     # 1
-# print(e(parse("6/3*2")))         # 4 (6 / 3 * 2)
-# print(e(parse("6/3+2")))         # 4 (6 / 3 + 2)
-# print(e(parse("2+6/3")))         # 4 (2 + 6 / 3)
-# print(e(parse("2*3/4")))         # 1.5 (2 * 3 / 4)
-# print(e(parse("2^3^2")))         # 512 (2^(3^2))
-# print(e(parse("(2+3)*4/2")))     # 10((2+3) * 4 / 2)
-# print(e(parse("2+3-4*5/2")))     # -5 (2 + 3 - 20 / 2)
-# print(e(parse("2+3 > 4")))       # 1 (True: 2+3 > 4)
-# print(e(parse("2+6/3 == 4")))    # 1 (True: 2 + 6/3 == 4)
-# print(e(parse("2.5-3-4")))       #-4.5
-# print(e(parse("2>3>6")))         #0
-# print(parse("2 !< 3"))  
-# print(e(parse("true + true"))) # 4
-# print(e(parse("if 4>3 then int a = 4 else int a = 0"))) # 4
-# print(parse("if 4>3 then int a = 4 else int a = 0"))
-# print(e(parse("float y = 2.5"))) # 2.5
-# print(e(parse("bool z = true"))) # True
-# print(e(parse("if False then 10 else 20")))  # 20
-# print(e(parse("if (4>2) then 1 else 0")))  # 1
-# print(e(parse("~4+6/0")))           #division by zero 
-# print(e(parse("int x = 4")))
-# print(e(parse('int x=0;for(int i=0; i<2; i=i+1){for(int j=5; j>0; j=j-1){x=x-1};x=x+1}')))
-
-
-
-# compiler forces float to be like '1.0' is this right ? 
-# print(e(parse("def foo(int x) -> bool {return x;}")))
-# print(e(parse("foo(5)")))
-
-# to do for functions : add recursive return 
-
 print(e(parse("int x=1;int y=2; if (x < 4) { x=10; y=2} elif (3 > 4 ) { 5} elif (3 > 10) { 7} else { 15}")))
