@@ -266,25 +266,32 @@ def e(tree: AST, env={}, types={}): # could also make the env dict global
             return val
         
         case While(condition, body):
-            xy=None
             while e(condition, env, types):
-                for stmt in body:
-                  xy= e(stmt, env, types)
-                  print(xy)
-                  
-            return xy
+                if isinstance(body, Sequence):
+                    for stmt in body.statements:
+                        result = e(stmt, env, types)
+                        if result is not None:
+                            print(result)
+                else:
+                    result = e(body, env, types)
+                    if result is not None:
+                        print(result)
+            return None
         
         case For(init, condition, increment, body):
             xy = None
             e(init, env, types)  # Execute initialization (e.g., i = 0)
-            
             while e(condition, env, types):  # Check loop condition
-                for stmt in body:
-                    xy = e(stmt, env, types)  # Execute loop body
-                    print(xy)
-
+                if isinstance(body, Sequence):
+                    for stmt in body.statements:
+                        xy = e(stmt, env, types)  # Execute loop body
+                        if xy is not None:
+                            print(xy)
+                else:
+                    xy = e(body, env, types)
+                    if xy is not None:
+                        print(xy)
                 e(increment, env, types)  # Execute increment (e.g., i = i + 1)
-
             return xy
 
         case Sequence(statements):
@@ -643,7 +650,6 @@ def parse(s: str) -> AST:
 
                 case KeywordToken('for'):
                     next(t)
-
                     match t.peek(None):
                         case ParenthesisToken('('):
                             next(t)
@@ -688,12 +694,10 @@ def parse(s: str) -> AST:
 
                 case KeywordToken('while'):
                     next(t)
-
                     match t.peek(None):
                         case ParenthesisToken('('):
                             next(t)
                             condition = parse_comparator()
-
                             match next(t, None):
                                 case ParenthesisToken(')'):
                                     pass
@@ -701,7 +705,6 @@ def parse(s: str) -> AST:
                                     raise ParseError("Expected ')' after while condition", t.peek())
                         case _:
                             raise ParseError("Expected '(' after 'while' keyword", t.peek())
-
                     match t.peek(None):
                         case ParenthesisToken('{'):
                             next(t)
@@ -710,7 +713,6 @@ def parse(s: str) -> AST:
                                 raise ParseError("Expected '}' after while-loop body", t.peek())
                             next(t)  # Consume '}'
                             return While(condition, body)
-
                         case _:
                             raise ParseError("Expected '{' after while condition", t.peek())
                 case _:
@@ -781,11 +783,30 @@ def parse(s: str) -> AST:
                                                     break
                                             if next(t) != ParenthesisToken("]"):
                                                 raise ParseError("Expected ']' after array elements", t.peek())
-                                            return Declaration(var_type, var_name, Array(elements))
+                                            return Declaration(var_type + "[]", var_name, Array(elements))
                                         case _:
                                             raise ParseError("Expected '=' or '[' after variable name", t.peek())
+                            case ParenthesisToken('['):  # Array type
+                                next(t)
+                                if next(t) != ParenthesisToken(']'):
+                                    raise ParseError("Expected ']' after '[' in array type", t.peek())
+                                match t.peek(None):
+                                    case VariableToken(var_name):
+                                        if var_name in keywords:
+                                            raise ParseError(f"Invalid variable name: {var_name}", t.peek())
+                                        else:
+                                            next(t)
+                                            match t.peek(None):
+                                                case OperatorToken('='):
+                                                    next(t)
+                                                    value = parse_comparator()
+                                                    return Declaration(var_type + "[]", var_name, value)
+                                                case _:
+                                                    raise ParseError("Expected '=' after array variable name", t.peek())
+                                    case _:
+                                        raise ParseError("Expected variable name after array type", t.peek())
                             case _:
-                                raise ParseError("Expected variable name", t.peek())
+                                raise ParseError("Expected variable name or '[' after type", t.peek())
                 case _:
                     return parse_comparator()
         except ParseError as e:
@@ -961,6 +982,9 @@ def run_test(code):
         print(f"Error: {ex}")
 
 # Test cases
+print(e(parse("print(5+3);"))) 
+print(e(parse('print("Mom and Dad");')))  
+print(e(parse('print("HI");')))
 print(e(parse("int x=12; print(x);")))  # Test printing an integer variable
 print(e(parse("int x=12; int y=2; if (x < 4) { x=10; y=2} elif (x < 8 ) { x=20; y=30} elif (x < 10) { x=40; y=60} else { x=15; y=45}; print(y);")))  # Test printing after conditional statements
 # Additional test cases
@@ -968,8 +992,8 @@ run_test("int x=12; print(x);")  # Expected output: 12
 run_test("int x=12; int y=2; if (x < 4) { x=10; y=2} elif (x < 8 ) { x=20; y=30} elif (x < 10) { x=40; y=60} else { x=15; y=45}; print(y);")  # Expected output: 45
 
 # Loop test cases
-run_test("int i=0; while (i < 3) { print(i); i = i + 1; }")  # Expected output: 0 1 2
 run_test("for (int i=0; i<3; i=i+1) {print(i);}")  # Expected output: 0 1 2
+run_test("int i=0; while (i < 3) { print(i); i = i + 1; }")  # Expected output: 0 1 2
 
 # Data structure test cases
 run_test("int[] arr = [1, 2, 3]; print(arr[0], arr[1], arr[2]);")  # Expected output: 1 2 3
