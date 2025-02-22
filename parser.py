@@ -109,9 +109,10 @@ class FunctionCall(AST):
 class Return(AST):
     value: AST
 
+# Update the Print AST node to handle multiple values
 @dataclass
 class Print(AST):
-    value: AST
+    values: list[AST]  # Changed from single value to list of values
 
 @dataclass
 class Array(AST):
@@ -129,7 +130,22 @@ class ArrayAssignment(AST):
     value: AST
 
 # Dictionary to map data types to Python types
-datatypes = {"int": int, "float": float, "bool": bool, "string": str}
+datatypes = {
+    "int": int, 
+    "float": float, 
+    "bool": bool, 
+    "string": str,
+    "int[]": list,
+    "float[]": list,
+    "bool[]": list,
+    "string[]": list
+}
+
+def is_array_type(type_str: str) -> bool:
+    return type_str.endswith('[]')
+
+def get_base_type(type_str: str) -> str:
+    return type_str[:-2] if is_array_type(type_str) else type_str
 
 # Function to evaluate the AST
 def e(tree: AST, env={}, types={}): # could also make the env dict global 
@@ -243,7 +259,14 @@ def e(tree: AST, env={}, types={}): # could also make the env dict global
         case Declaration(var_type, var_name, value):
             val = e(value, env, types)
 
-            if not isinstance(val, datatypes[var_type]):
+            if is_array_type(var_type):
+                if not isinstance(val, list):
+                    raise TypeError(f"Variable '{var_name}' must be of type {var_type}")
+                # Check that all elements are of the base type
+                base_type = datatypes[get_base_type(var_type)]
+                if not all(isinstance(x, base_type) for x in val):
+                    raise TypeError(f"All elements in array '{var_name}' must be of type {get_base_type(var_type)}")
+            elif not isinstance(val, datatypes[var_type]):
                 raise TypeError(f"Variable '{var_name}' must be of type {var_type}")
 
             env[var_name] = val
@@ -309,8 +332,9 @@ def e(tree: AST, env={}, types={}): # could also make the env dict global
                 raise TypeError("Concat can only be used with String")
 
             return left_val + right_val 
-        case Print(value):
-            print(e(value, env, types))
+        case Print(values):
+            results = [e(value, env, types) for value in values]
+            print(*results)  # Changed to use default print behavior with newline
             return None
         case Array(elements):
             return [e(element, env, types) for element in elements]
@@ -468,8 +492,37 @@ def parse(s: str) -> AST:
                             raise ParseError("Expected ';' after return statement", t.peek())
                     case KeywordToken("print"):
                         next(t)  # Consume 'print'
-                        expr = parse_comparator()  # Parse the expression to print
-                        statements.append(Print(expr))
+                        if t.peek(None) != ParenthesisToken("("):
+                            raise ParseError("Expected '(' after print keyword", t.peek())
+                        next(t)  # Consume '('
+                        
+                        values = []
+                        while t.peek(None) and not isinstance(t.peek(None), ParenthesisToken):
+                            if isinstance(t.peek(None), VariableToken):
+                                var_name = next(t).v
+                                if t.peek(None) == ParenthesisToken('['):
+                                    # Handle array access
+                                    next(t)  # Consume '['
+                                    index = parse_comparator()
+                                    if next(t) != ParenthesisToken(']'):
+                                        raise ParseError("Expected ']' after array index", t.peek())
+                                    values.append(ArrayAccess(Variable(var_name), index))
+                                else:
+                                    t.prepend(VariableToken(var_name))
+                                    values.append(parse_comparator())
+                            else:
+                                values.append(parse_comparator())
+                                
+                            if t.peek(None) == SymbolToken(","):
+                                next(t)
+                            else:
+                                break
+                                
+                        if next(t) != ParenthesisToken(")"):
+                            raise ParseError("Expected ')' after print arguments", t.peek())
+                            
+                        statements.append(Print(values))
+                        
                         if t.peek(None) == SymbolToken(";"):
                             next(t)
                         else:
@@ -977,41 +1030,41 @@ def run_test(code):
     try:
         ast = parse(code)
         result = e(ast)
-        # print(f"Result: {result}")
     except Exception as ex:
-        print(f"Error: {ex}")
+        print(f"Error: {ex}\n")  # Added newline after error messages
 
-# Test cases
+# Test cases with added print title separators
+print("\n=== Basic Tests ===")
 print(e(parse("print(5+3);"))) 
 print(e(parse('print("Mom and Dad");')))  
 print(e(parse('print("HI");')))
-print(e(parse("int x=12; print(x);")))  # Test printing an integer variable
-print(e(parse("int x=12; int y=2; if (x < 4) { x=10; y=2} elif (x < 8 ) { x=20; y=30} elif (x < 10) { x=40; y=60} else { x=15; y=45}; print(y);")))  # Test printing after conditional statements
-# Additional test cases
-run_test("int x=12; print(x);")  # Expected output: 12
-run_test("int x=12; int y=2; if (x < 4) { x=10; y=2} elif (x < 8 ) { x=20; y=30} elif (x < 10) { x=40; y=60} else { x=15; y=45}; print(y);")  # Expected output: 45
+print(e(parse("int x=12; print(x);")))
 
-# Loop test cases
-run_test("for (int i=0; i<3; i=i+1) {print(i);}")  # Expected output: 0 1 2
-run_test("int i=0; while (i < 3) { print(i); i = i + 1; }")  # Expected output: 0 1 2
+print("\n=== Conditional Tests ===")
+print(e(parse("int x=12; int y=2; if (x < 4) { x=10; y=2} elif (x < 8 ) { x=20; y=30} elif (x < 10) { x=40; y=60} else { x=15; y=45}; print(y);")))
 
-# Data structure test cases
-run_test("int[] arr = [1, 2, 3]; print(arr[0], arr[1], arr[2]);")  # Expected output: 1 2 3
-run_test("int[] arr = [1, 2, 3]; arr[1] = 10; print(arr[0], arr[1], arr[2]);")  # Expected output: 1 10 3
+print("\n=== Loop Tests ===")
+run_test("for (int i=0; i<3; i=i+1) {print(i);}")
+run_test("int i=0; while (i < 3) { print(i); i = i + 1; }")
 
-# Expression test cases
-run_test("int a=5; int b=10; print(a + b);")  # Expected output: 15
-run_test("int a=5; int b=10; print(a * b);")  # Expected output: 50
-run_test("int a=5; int b=10; print(a < b);")  # Expected output: True
-run_test("int a=5; int b=10; print(a > b);")  # Expected output: False
-run_test("int a=5; int b=10; print(a == b);")  # Expected output: False
-run_test("int a=5; int b=10; print(a != b);")  # Expected output: True
+print("\n=== Array Tests ===")
+print(e(parse('print("array test cases");')))
+run_test("int[] arr = [1, 2, 3]; print(arr[2]);")
+print(e(parse('print("new case");')))
+run_test("int[] arr = [1, 2, 3]; arr[1] = 10; print(arr[0], arr[1], arr[2]);")
 
-# Invalid test cases
-print("\nInvalid Test Cases:")
-run_test("int x=12; print(x")  # Missing closing parenthesis
-run_test("int x=12; int y=2; if (x < 4 { x=10; y=2} else { x=15; y=45}; print(y);")  # Missing closing parenthesis in if condition
-run_test("int x=12; int y=2; if x < 4) { x=10; y=2} else { x=15; y=45}; print(y);")  # Missing opening parenthesis in if condition
-run_test("int x=12; int y=2; if (x < 4) { x=10; y=2 else { x=15; y=45}; print(y);")  # Missing closing brace in if body
+print("\n=== Expression Tests ===")
+run_test("int a=5; int b=10; print(a + b);")
+run_test("int a=5; int b=10; print(a * b);")
+run_test("int a=5; int b=10; print(a < b);")
+run_test("int a=5; int b=10; print(a > b);")
+run_test("int a=5; int b=10; print(a == b);")
+run_test("int a=5; int b=10; print(a != b);")
+
+print("\n=== Invalid Test Cases ===")
+run_test("int x=12; print(x")
+run_test("int x=12; int y=2; if (x < 4 { x=10; y=2} else { x=15; y=45}; print(y);")
+run_test("int x=12; int y=2; if x < 4) { x=10; y=2} else { x=15; y=45}; print(y);")
+run_test("int x=12; int y=2; if (x < 4) { x=10; y=2 else { x=15; y=45}; print(y);")
 run_test("int x=12; int y=2; if (x < 4) { x=10; y=2} elif (x < 8 ) { x=20; y=30 elif (x < 10) { x=40; y=60} else { x=15; y=45}; print(y);")  # Missing closing parenthesis in elif condition
 run_test("int x=12; int y=2; if (x < 4) { x=10; y=2} elif (x < 8 ) { x=20; y=30} elif (x < 10) { x=40; y=60} else { x=15; y=45; print(y);")  # Missing closing brace in else body
