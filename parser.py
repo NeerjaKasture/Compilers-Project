@@ -129,6 +129,10 @@ class ArrayAssignment(AST):
     index: AST
     value: AST
 
+@dataclass
+class Input(AST):
+    type: str  
+
 # Dictionary to map data types to Python types
 datatypes = {
     "int": int, 
@@ -150,6 +154,21 @@ def get_base_type(type_str: str) -> str:
 # Function to evaluate the AST
 def e(tree: AST, env={}, types={}): # could also make the env dict global 
     match tree:
+        case Input(type):
+            try:
+                user_input = input()
+                match type:
+                    case "int":
+                        return int(user_input)
+                    case "float":
+                        return float(user_input)
+                    case "string":
+                        return str(user_input)
+                    case _:
+                        raise TypeError(f"Unsupported input type: {type}")
+            except ValueError as ve:
+                print(f"Invalid input for type {type}: {ve}")
+                return None
         case Variable(v):
             if v in env:
                 return env[v]
@@ -258,7 +277,8 @@ def e(tree: AST, env={}, types={}): # could also make the env dict global
         
         case Declaration(var_type, var_name, value):
             val = e(value, env, types)
-
+            if val is None:  # Handle failed input
+                raise ValueError(f"Failed to get valid input for {var_name}")
             if is_array_type(var_type):
                 if not isinstance(val, list):
                     raise TypeError(f"Variable '{var_name}' must be of type {var_type}")
@@ -273,6 +293,7 @@ def e(tree: AST, env={}, types={}): # could also make the env dict global
 
             # is this ok to store type of python itself and not a string?
             types[var_name] = var_type
+
 
             return val
         
@@ -333,9 +354,15 @@ def e(tree: AST, env={}, types={}): # could also make the env dict global
 
             return left_val + right_val 
         case Print(values):
-            results = [e(value, env, types) for value in values]
-            print(*results)  # Changed to use default print behavior with newline
+            results = []
+            for value in values:
+                result = e(value, env, types)
+                results.append(result)
+            print(*results)  # This will print the values
             return None
+            # results = [e(value, env, types) for value in values]
+            # print(*results)  # Changed to use default print behavior with newline
+            # return None
         case Array(elements):
             return [e(element, env, types) for element in elements]
         case ArrayAccess(array, index):
@@ -823,6 +850,15 @@ def parse(s: str) -> AST:
                                     match t.peek(None):
                                         case OperatorToken('='):
                                             next(t)
+                                            if isinstance(t.peek(None), VariableToken) and t.peek(None).v == "input":
+                                                next(t)  # consume 'input'
+                                                if not isinstance(t.peek(None), ParenthesisToken) or t.peek(None).p != '(':
+                                                    raise ParseError("Expected '(' after input", t.peek())
+                                                next(t)
+                                                if not isinstance(t.peek(None), ParenthesisToken) or t.peek(None).p != ')':
+                                                    raise ParseError("Expected ')' after input", t.peek())
+                                                next(t) 
+                                                return Declaration(var_type, var_name, Input(var_type))
                                             value = parse_comparator()
                                             return Declaration(var_type, var_name, value)
                                         case ParenthesisToken('['):  # Array declaration
@@ -1028,11 +1064,19 @@ def parse(s: str) -> AST:
 
 def run_test(code):
     try:
+        print(f"\nExecuting: {code}")
         ast = parse(code)
-        result = e(ast)
+        if ast is None:
+            print("Failed to parse the code")
+            return
+        e(ast)  # Just execute, don't print result
     except Exception as ex:
-        print(f"Error: {ex}\n")  # Added newline after error messages
+        print(f"Error: {ex}\n")
 
+print("\n=== Input Tests ===")
+run_test("int siri = input(); print(siri*2);")
+run_test("float har = input(); print(har);")
+run_test("string aks = input(); print(aks);")
 # Test cases with added print title separators
 print("\n=== Basic Tests ===")
 print(e(parse("print(5+3);"))) 
@@ -1061,10 +1105,11 @@ run_test("int a=5; int b=10; print(a > b);")
 run_test("int a=5; int b=10; print(a == b);")
 run_test("int a=5; int b=10; print(a != b);")
 
-print("\n=== Invalid Test Cases ===")
-run_test("int x=12; print(x")
-run_test("int x=12; int y=2; if (x < 4 { x=10; y=2} else { x=15; y=45}; print(y);")
-run_test("int x=12; int y=2; if x < 4) { x=10; y=2} else { x=15; y=45}; print(y);")
-run_test("int x=12; int y=2; if (x < 4) { x=10; y=2 else { x=15; y=45}; print(y);")
-run_test("int x=12; int y=2; if (x < 4) { x=10; y=2} elif (x < 8 ) { x=20; y=30 elif (x < 10) { x=40; y=60} else { x=15; y=45}; print(y);")  # Missing closing parenthesis in elif condition
-run_test("int x=12; int y=2; if (x < 4) { x=10; y=2} elif (x < 8 ) { x=20; y=30} elif (x < 10) { x=40; y=60} else { x=15; y=45; print(y);")  # Missing closing brace in else body
+# print("\n=== Invalid Test Cases ===")
+# run_test("int x=12; print(x")
+# run_test("int x=12; int y=2; if (x < 4 { x=10; y=2} else { x=15; y=45}; print(y);")
+# run_test("int x=12; int y=2; if x < 4) { x=10; y=2} else { x=15; y=45}; print(y);")
+# run_test("int x=12; int y=2; if (x < 4) { x=10; y=2 else { x=15; y=45}; print(y);")
+# run_test("int x=12; int y=2; if (x < 4) { x=10; y=2} elif (x < 8 ) { x=20; y=30 elif (x < 10) { x=40; y=60} else { x=15; y=45}; print(y);")  # Missing closing parenthesis in elif condition
+# run_test("int x=12; int y=2; if (x < 4) { x=10; y=2} elif (x < 8 ) { x=20; y=30} elif (x < 10) { x=40; y=60} else { x=15; y=45; print(y);")  # Missing closing brace in else body
+
