@@ -18,7 +18,6 @@ except FileNotFoundError:
 
 
 ast = parse(code)
-print(ast)
 result = e(ast)
 result
 

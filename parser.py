@@ -157,14 +157,16 @@ def parse(s: str) -> AST:
                         statements.append(stmt)
 
                 #  Allow both ; and \n as optional separators
-                while isinstance(t.peek(None), (SymbolToken, NewlineToken)):
+                # if isinstance(t.peek(None), SemicolonToken):
+                #     next(t)
+                # else:
+                #     raise ParseError("Expected ';' after statement", t.peek())
+                while isinstance(t.peek(None), SymbolToken):
                     token = t.peek(None)
                     if isinstance(token, SymbolToken) and token.val == ";":
                         next(t)  
-                    elif isinstance(token, NewlineToken):
-                        next(t) 
                     else:
-                        break 
+                        raise ParseError("Expected ';' after statement", t.peek())
 
             except ParseError as e:
                 print(e)
@@ -320,8 +322,7 @@ def parse(s: str) -> AST:
                     if t.peek(None) != ParenthesisToken('}'):
                         raise ParseError("Expected '}' after if body", t.peek())
                     next(t) 
-                    while isinstance(t.peek(None), NewlineToken):
-                        next(t)
+                    
                     elif_branches = []
                     while isinstance(t.peek(None), KeywordToken) and t.peek(None).val == 'elif':
                         next(t)  
@@ -396,14 +397,11 @@ def parse(s: str) -> AST:
                         case _:
                             raise ParseError("Expected '(' after 'for' keyword", t.peek())
 
-                    while isinstance(t.peek(None), NewlineToken):
-                        next(t)
                     match t.peek(None):
                         case ParenthesisToken('{'):
                             next(t)
                             body = parse_sequence()  # Parse the body of the for loop
-                            while isinstance(t.peek(None), NewlineToken):
-                                next(t)
+                            
                             if t.peek(None) != ParenthesisToken('}'):
                                 print(t.peek())
                                 raise ParseError("Expected '}' after for-loop body", t.peek())
@@ -426,14 +424,12 @@ def parse(s: str) -> AST:
                                     raise ParseError("Expected ')' after while condition", t.peek())
                         case _:
                             raise ParseError("Expected '(' after 'while' keyword", t.peek())
-                    while isinstance(t.peek(None), NewlineToken):
-                        next(t)
+                    
                     match t.peek(None):
                         case ParenthesisToken('{'):
                             next(t)
                             body = parse_sequence()  # Parse the body of the while loop
-                            while isinstance(t.peek(None), NewlineToken):
-                                next(t)
+                            
                             if t.peek(None) != ParenthesisToken('}'):
                                 raise ParseError("Expected '}' after while-loop body", t.peek())
                             next(t)  # Consume '}'
@@ -699,8 +695,7 @@ def parse(s: str) -> AST:
                     if next(t) != ParenthesisToken("]"):
                         raise ParseError("Expected ']' after array elements", t.peek())
                     return Array(elements)
-                case NewlineToken():
-                    next(t) 
+                
                 case _:
                     raise ParseError(f"Unexpected token: {t.peek(None)}", t.peek())
         except ParseError as e:

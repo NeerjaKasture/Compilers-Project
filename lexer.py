@@ -42,14 +42,12 @@ class TypeToken(Token):
 class SymbolToken(Token):
     val: str
 
-@dataclass
-class NewlineToken(Token):
-    pass
+
 
 def lex(s: str) -> Iterator[Token]:
     i = 0
     while i < len(s):
-        while i < len(s) and s[i].isspace() and s[i] != '\n':
+        while i < len(s) and s[i].isspace():
             i += 1
 
         if i >= len(s):
@@ -96,9 +94,7 @@ def lex(s: str) -> Iterator[Token]:
                 i += 1
             continue
 
-        elif s[i] == '\n':
-            yield NewlineToken()
-            i += 1
+        
 
         else:
             match s[i]:
