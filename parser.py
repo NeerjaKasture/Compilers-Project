@@ -701,6 +701,7 @@ def parse(s: str) -> AST:
                     raise ParseError(f"Unexpected token: {t.peek(None)}", t.peek())
         except ParseError as e:
             print(e)
+            next(t) # move past the problematic token to prevent infinite loops
             return None
 
     return parse_sequence()
