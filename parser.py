@@ -315,11 +315,13 @@ def parse(s: str) -> AST:
                         raise ParseError("Expected '{' after if condition", t.peek())
 
                     next(t) 
-                    if_branch = parse_sequence()  
+                    if_branch = parse_sequence()
+                    
                     if t.peek(None) != ParenthesisToken('}'):
                         raise ParseError("Expected '}' after if body", t.peek())
                     next(t) 
-
+                    while isinstance(t.peek(None), NewlineToken):
+                        next(t)
                     elif_branches = []
                     while isinstance(t.peek(None), KeywordToken) and t.peek(None).val == 'elif':
                         next(t)  
@@ -333,7 +335,7 @@ def parse(s: str) -> AST:
                         closing_paren = next(t, None)  
                         if not isinstance(closing_paren, ParenthesisToken) or closing_paren.val != ')':
                             raise ParseError("Expected ')' after elif condition", t.peek())
-
+                        
                         if not isinstance(t.peek(None), ParenthesisToken) or t.peek(None).val != '{':
                             raise ParseError("Expected '{' after elif condition", t.peek())
 
@@ -344,10 +346,12 @@ def parse(s: str) -> AST:
                         next(t) 
 
                         elif_branches.append((elif_condition, elif_body))
-
+                    
                     else_branch = None
+                    print(t.peek(None))
                     if isinstance(t.peek(None), KeywordToken) and t.peek(None).val == 'else':
                         next(t)  
+                        print(t.peek(None))
 
                         if not isinstance(t.peek(None), ParenthesisToken) or t.peek(None).val != '{':
                             raise ParseError("Expected '{' after else keyword", t.peek())
@@ -701,6 +705,7 @@ def parse(s: str) -> AST:
                     raise ParseError(f"Unexpected token: {t.peek(None)}", t.peek())
         except ParseError as e:
             print(e)
+            next(t)
             return None
 
     return parse_sequence()

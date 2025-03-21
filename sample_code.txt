@@ -47,3 +47,8 @@ while (i < 3) {
     i = i + 1
 }
 
+print("=== If-Elif-Else Tests ===")
+int x = 3;
+if (x > 5){ x = x + 1 }
+else { x = x - 1 }
+print(x)
