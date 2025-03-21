@@ -349,7 +349,6 @@ def parse(s: str) -> AST:
                         elif_branches.append((elif_condition, elif_body))
                     
                     else_branch = None
-                    print(t.peek(None))
                     if isinstance(t.peek(None), KeywordToken) and t.peek(None).val == 'else':
                         next(t)  
                         print(t.peek(None))
@@ -403,7 +402,6 @@ def parse(s: str) -> AST:
                             body = parse_sequence()  # Parse the body of the for loop
                             
                             if t.peek(None) != ParenthesisToken('}'):
-                                print(t.peek())
                                 raise ParseError("Expected '}' after for-loop body", t.peek())
                             next(t)  # Consume '}'
                             return For(init, condition, increment, body)
