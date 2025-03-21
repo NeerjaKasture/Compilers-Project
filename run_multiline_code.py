@@ -1,5 +1,6 @@
 import ast
-from parser import e, parse
+from parser import parse
+from evaluator import e
 
 def run_tests(expression, expected):
     try:
@@ -43,5 +44,5 @@ with open('multiline_code.txt', 'r') as code:
 
 # print(e(parse(test_case)))          # debugging output
 
-expected = [5, 6, 15]                 # write the expected output of code.txt
+expected = 1               # write the expected output of code.txt
 run_tests(test_case, expected)  
