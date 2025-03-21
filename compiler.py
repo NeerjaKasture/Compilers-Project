@@ -16,12 +16,11 @@ except FileNotFoundError:
     print(f"Error: File '{filename}' not found.")
     sys.exit(1)
 
-try:
-    ast = parse(code)
-    result = e(ast)
-    result
-except Exception as error:
-    print(f"Error: {error}")
+
+ast = parse(code)
+result = e(ast)
+result
+
 
 
 

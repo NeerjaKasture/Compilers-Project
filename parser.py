@@ -150,7 +150,7 @@ def parse(s: str) -> AST:
                     case KeywordToken("print"):
                         statements.append(parse_print())
                     case ParenthesisToken('}'):
-                        next(t)  
+                        # next(t)  
                         break 
                     case _:
                         stmt = parse_condition()
@@ -401,6 +401,7 @@ def parse(s: str) -> AST:
                             while isinstance(t.peek(None), NewlineToken):
                                 next(t)
                             if t.peek(None) != ParenthesisToken('}'):
+                                print(t.peek())
                                 raise ParseError("Expected '}' after for-loop body", t.peek())
                             next(t)  # Consume '}'
                             return For(init, condition, increment, body)
@@ -694,6 +695,8 @@ def parse(s: str) -> AST:
                     if next(t) != ParenthesisToken("]"):
                         raise ParseError("Expected ']' after array elements", t.peek())
                     return Array(elements)
+                case NewlineToken():
+                    next(t) 
                 case _:
                     raise ParseError(f"Unexpected token: {t.peek(None)}", t.peek())
         except ParseError as e:

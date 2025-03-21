@@ -34,12 +34,16 @@ int[] arr = [1, 2, 3]; arr[1] = 10; print(arr[0], arr[1], arr[2]);
 # int x=12; int y=2; if (x < 4) { x=10; y=2} elif (x < 8 ) { x=20; y=30 elif (x < 10) { x=40; y=60} else { x=15; y=45}; print(y);  # Missing closing parenthesis in elif condition
 # int x=12; int y=2; if (x < 4) { x=10; y=2} elif (x < 8 ) { x=20; y=30} elif (x < 10) { x=40; y=60} else { x=15; y=45; print(y); # Missing closing brace in else body
 
-#print("=== Loop Tests ===")
-#for (int i=0; i<3; i=i+1){
-#    print(i);
-#}
-#int i=0; 
-#while (i < 3) { 
-#    print(i); 
-#    i = i + 1;}
+print("=== Loop Tests ===")
+for (int i=0; i<3; i=i+1){
+    for(int j=0; j<2; j=j+1){
+        print(j)
+    }
+    print(i)
+    }
+int i=0; 
+while (i < 3) { 
+    print(i); 
+    i = i + 1
+}
 

@@ -178,12 +178,8 @@ def e(tree: AST, env={}, types={}): # could also make the env dict global
                 if isinstance(body, Sequence):
                     for stmt in body.statements:
                         result = e(stmt, env, types)
-                        if result is not None:
-                            print(result)
                 else:
                     result = e(body, env, types)
-                    if result is not None:
-                        print(result)
             return None
         
         case For(init, condition, increment, body):
