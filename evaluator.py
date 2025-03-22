@@ -10,12 +10,13 @@ def get_base_type(type_str: str) -> str:
     return type_str[:-2] if is_array_type(type_str) else type_str
 
 
-def e(tree: AST, env={}, types={}): # could also make the env dict global 
+def e(tree: AST, env={}, types={}, call_stack=[]):
+
     match tree:
-        case Input(type):
+        case Input(inp_type):
             try:
                 user_input = input()
-                match type:
+                match inp_type:
                     case "int":
                         return int(user_input)
                     case "float":
@@ -23,15 +24,22 @@ def e(tree: AST, env={}, types={}): # could also make the env dict global
                     case "string":
                         return str(user_input)
                     case _:
-                        raise TypeError(f"Unsupported input type: {type}")
+                        raise TypeError(f"Unsupported input type: {inp_type}")
             except ValueError as ve:
-                print(f"Invalid input for type {type}: {ve}")
+                print(f"Invalid input for type {inp_type}: {ve}")
                 return None
+            
         case Variable(v):
-            if v in env:
+            if call_stack:    
+                local_env, _ = call_stack[-1]
+                if v in local_env:
+                    return local_env[v]
+            
+
+            if v in env:  # Fallback to global scope
                 return env[v]
-            else:
-                raise NameError(f"Undefined variable: {v}")
+            raise NameError(f"Undefined variable: {v}")
+
 
         case Function(name, params, return_type, body):  
             env[name] = tree  
@@ -42,38 +50,46 @@ def e(tree: AST, env={}, types={}): # could also make the env dict global
                 raise NameError(f"Undefined function: {name}")
 
             func = env[name]
+            if not isinstance(func, Function):
+                raise TypeError(f"'{name}' is not a function")
             if len(args) != len(func.params):
                 raise TypeError(f"Function '{name}' expects {len(func.params)} arguments but got {len(args)}")
-            
-            function_call_stack.append(name)
-            if len(function_call_stack) > MAX_RECURSION_DEPTH:
-                raise RecursionError("Maximum recursion depth exceeded")
-
+                    
             # This means that all var in env are global and accessible by function to read only
             local_env = env.copy()
             local_types = types.copy()
 
             # Bind function arguments
             for (param_type, param_name), arg in zip(func.params, args):
-                arg_value = e(arg, env, types)
-
+                arg_value = e(arg, local_env, local_types)
+                
                 if not isinstance(arg_value, datatypes[param_type]):
                     raise TypeError(f"Argument '{param_name}' must be of type {param_type}")
 
                 local_env[param_name] = arg_value
-                local_types[param_name] = param_type
+                local_types[param_name] = param_type 
             
-            result = e(func.body, local_env, local_types)
+            call_stack.append((local_env,local_types))   
+            
+            result = e(func.body, local_env, local_types,call_stack)
+            
+            
         
             if func.return_type != "void" and not isinstance(result, datatypes[func.return_type]):
                 raise TypeError(f"Function '{name}' must return a value of type {func.return_type}, but got {type(result).__name__}")
-            
-            function_call_stack.pop()
+
+            call_stack.pop()
 
             return result
         
         case Return(expr):
-            return e(expr, env, types)
+            if not call_stack:
+                raise RuntimeError("Return statement executed outside of function scope")
+            local_env,local_types = call_stack[-1]
+            
+            res = e(expr, local_env, local_types,call_stack)
+            
+            return res
 
         case Boolean(v):
             if v == "true":
@@ -217,6 +233,8 @@ def e(tree: AST, env={}, types={}): # could also make the env dict global
             results = []
             for value in values:
                 result = e(value, env, types)
+                if isinstance(result, bool): 
+                    result = "true" if result else "false"
                 results.append(result)
             print(*results)  # This will print the values
             return None
