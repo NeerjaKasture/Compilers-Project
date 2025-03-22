@@ -118,6 +118,16 @@ class ArrayAssignment(AST):
     value: AST
 
 @dataclass
+class ArrayAppend(AST):
+    array: AST
+    value: AST
+
+@dataclass
+class ArrayDelete(AST):
+    array: AST
+    index: AST
+
+@dataclass
 class Input(AST):
     type: str  
 
@@ -199,6 +209,15 @@ def parse(s: str) -> AST:
                     if next(t) != ParenthesisToken(")"):
                         raise ParseError("Expected ')' after function arguments", t.peek())
 
+                    # Check for array operations
+                    if name.endswith(".append") and len(args) == 1:
+                        array_name = name.split(".")[0]
+                        return ArrayAppend(Variable(array_name), args[0])
+
+                    if name.endswith(".delete") and len(args) == 1:
+                        array_name = name.split(".")[0]
+                        return ArrayDelete(Variable(array_name), args[0])
+                    
                     return FunctionCall(name, args)
                 case _:
                     return parse_comparator()
@@ -508,6 +527,14 @@ def parse(s: str) -> AST:
                                                 next(t) 
                                                 return Declaration(var_type, var_name, Input(var_type))
                                             value = parse_comparator()
+                                            # **FIX: Ensure arr[0] is parsed as ArrayAccess**
+                                            if isinstance(value, Variable) and t.peek(None) == ParenthesisToken('['):
+                                                next(t)
+                                                index = parse_comparator()
+                                                if next(t) != ParenthesisToken(']'):
+                                                    raise ParseError("Expected ']' after array index", t.peek())
+                                                value = ArrayAccess(value, index)  # Convert to ArrayAccess node
+
                                             return Declaration(var_type, var_name, value)
                                         case ParenthesisToken('['):  # Array declaration
                                             next(t)
@@ -622,8 +649,7 @@ def parse(s: str) -> AST:
                 match t.peek(None):
                     case OperatorToken('/'):
                         next(t)
-                        divisor = parse_exponent()
-                        ast = BinOp('/', ast, divisor)
+                        ast = BinOp('/', ast, parse_exponent())
                     case _:
                         return ast
         except ParseError as e:
@@ -672,7 +698,14 @@ def parse(s: str) -> AST:
                     return BinOp('*', Number('-1'), parse_atom())
                 case VariableToken(v):
                     next(t)
-                    return Variable(v)
+                    # Check if this variable is an array accessing term
+                    if t.peek(None) == ParenthesisToken('['):
+                        next(t)
+                        index = parse_comparator()
+                        if next(t) != ParenthesisToken(']'):
+                            raise ParseError("Expected ']' after array index", t.peek())
+                        return ArrayAccess(Variable(v), index)
+                    return Variable(v)  # If no `[`, treat as normal variable
                 case NumberToken(v):
                     next(t)
                     return Number(v)

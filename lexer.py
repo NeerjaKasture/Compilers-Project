@@ -55,7 +55,7 @@ def lex(s: str) -> Iterator[Token]:
 
         if s[i].isalpha():
             start = i
-            while i < len(s) and (s[i].isalnum() or s[i] == '_'):
+            while i < len(s) and (s[i].isalnum() or s[i] == '_' or s[i] == '.'):
                 i += 1
             word = s[start:i]
             if word in datatypes.keys():

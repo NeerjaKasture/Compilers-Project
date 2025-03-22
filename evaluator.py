@@ -236,7 +236,8 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
                 if isinstance(result, bool): 
                     result = "true" if result else "false"
                 results.append(result)
-            print(*results)  # This will print the values
+            # print(*results)  # This will print the values
+            print("".join(map(str, results))) # this will print the values without adding extra space while printing
             return None
             # results = [e(value, env, types) for value in values]
             # print(*results)  # Changed to use default print behavior with newline
@@ -257,4 +258,25 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
                 raise TypeError("Array assignment can only be used with arrays")
             array_val[index_val] = value_val
             return value_val
+        case ArrayAppend(array, value):
+            array_name = array.val  # Get the variable name
+            if array_name in env and isinstance(env[array_name], list):
+                env[array_name].append(e(value, env, types))  # Append the new value
+                return env[array_name]  # Return the updated array
+            else:
+                raise TypeError(f"Cannot append to non-array type: {array_name}")
+        case ArrayDelete(array, index):
+            array_name = array.val  # Get the variable name
+            if array_name in env and isinstance(env[array_name], list):
+                index_val = e(index, env, types)  # Evaluate the index
+                if not isinstance(index_val, int):
+                    raise TypeError(f"Array index must be an integer, got {type(index_val).__name__}")
+                if index_val < 0 or index_val >= len(env[array_name]):
+                    raise IndexError(f"Index {index_val} out of bounds for array '{array_name}'")
+                
+                del env[array_name][index_val]  # Remove the element at index
+                return env[array_name]  # Return updated array
+            else:
+                raise TypeError(f"Cannot delete from non-array type: {array_name}")
+
 
