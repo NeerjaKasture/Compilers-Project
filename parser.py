@@ -176,35 +176,22 @@ def parse(s: str) -> AST:
     
     def parse_print():
         next(t)  # Consume 'print'
+        
         if t.peek(None) != ParenthesisToken("("):
             raise ParseError("Expected '(' after print keyword", t.peek())
         next(t)  # Consume '('
         
         values = []
         while t.peek(None) and not isinstance(t.peek(None), ParenthesisToken):
-            if isinstance(t.peek(None), VariableToken):
-                var_name = next(t).val
-                if t.peek(None) == ParenthesisToken('['):
-                    next(t)  # Consume '['
-                    index = parse_comparator()
-                    if next(t) != ParenthesisToken(']'):
-                        raise ParseError("Expected ']' after array index", t.peek())
-                    values.append(ArrayAccess(Variable(var_name), index))
-                else:
-                    t.prepend(VariableToken(var_name))
-                    values.append(parse_comparator())
-            else:
-                values.append(parse_comparator())
-                
+            values.append(parse_comparator())  # Always use parse_comparator to handle full expressions
             if t.peek(None) == SymbolToken(","):
-                next(t)
+                next(t)  # Consume ','
             else:
                 break
-                
+
         if next(t) != ParenthesisToken(")"):
             raise ParseError("Expected ')' after print arguments", t.peek())
 
-            
         return Print(values)
                         
     def parse_function_call():
@@ -351,7 +338,6 @@ def parse(s: str) -> AST:
                     else_branch = None
                     if isinstance(t.peek(None), KeywordToken) and t.peek(None).val == 'else':
                         next(t)  
-                        print(t.peek(None))
 
                         if not isinstance(t.peek(None), ParenthesisToken) or t.peek(None).val != '{':
                             raise ParseError("Expected '{' after else keyword", t.peek())
@@ -499,6 +485,14 @@ def parse(s: str) -> AST:
                                                 next(t) 
                                                 return Declaration(var_type, var_name, Input(var_type))
                                             value = parse_comparator()
+                                            # **FIX: Ensure arr[0] is parsed as ArrayAccess**
+                                            if isinstance(value, Variable) and t.peek(None) == ParenthesisToken('['):
+                                                next(t)
+                                                index = parse_comparator()
+                                                if next(t) != ParenthesisToken(']'):
+                                                    raise ParseError("Expected ']' after array index", t.peek())
+                                                value = ArrayAccess(value, index)  # Convert to ArrayAccess node
+
                                             return Declaration(var_type, var_name, value)
                                         case ParenthesisToken('['):  # Array declaration
                                             next(t)
@@ -613,8 +607,7 @@ def parse(s: str) -> AST:
                 match t.peek(None):
                     case OperatorToken('/'):
                         next(t)
-                        divisor = parse_exponent()
-                        ast = BinOp('/', ast, divisor)
+                        ast = BinOp('/', ast, parse_exponent())
                     case _:
                         return ast
         except ParseError as e:
@@ -663,7 +656,14 @@ def parse(s: str) -> AST:
                     return BinOp('*', Number('-1'), parse_atom())
                 case VariableToken(v):
                     next(t)
-                    return Variable(v)
+                    # Check if this variable is an array accessing term
+                    if t.peek(None) == ParenthesisToken('['):
+                        next(t)
+                        index = parse_comparator()
+                        if next(t) != ParenthesisToken(']'):
+                            raise ParseError("Expected ']' after array index", t.peek())
+                        return ArrayAccess(Variable(v), index)
+                    return Variable(v)  # If no `[`, treat as normal variable
                 case NumberToken(v):
                     next(t)
                     return Number(v)

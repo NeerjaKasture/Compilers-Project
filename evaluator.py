@@ -218,7 +218,8 @@ def e(tree: AST, env={}, types={}): # could also make the env dict global
             for value in values:
                 result = e(value, env, types)
                 results.append(result)
-            print(*results)  # This will print the values
+            # print(*results)  # This will print the values
+            print("".join(map(str, results))) # this will print the values without adding extra space while printing
             return None
             # results = [e(value, env, types) for value in values]
             # print(*results)  # Changed to use default print behavior with newline
