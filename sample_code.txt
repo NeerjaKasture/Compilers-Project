@@ -34,6 +34,9 @@ print("first_element: ", first_element)
 print("sum: ", arr[0]+arr[1]+arr[2])
 arr[0] = 10
 print("arr[0]: ", arr[0]);
+string[] team = ["saloni", "anura", "neerja", "srijahnavi", "siri"]
+print("These are our team members: ")
+for (int i=0; i<5; i=i+1) {print(team[i])}
 
 # print("=== Invalid Test Cases ===")
 # int x=12; print(x")
