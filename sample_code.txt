@@ -37,6 +37,12 @@ print("arr[0]: ", arr[0]);
 string[] team = ["saloni", "anura", "neerja", "srijahnavi", "siri"]
 print("These are our team members: ")
 for (int i=0; i<5; i=i+1) {print(team[i])}
+int[] numbers = [10, 20, 30, 40, 50];
+print(numbers)
+numbers.append(60)
+print("After appending a new element: ", numbers)
+numbers.delete(0)
+print("After deleting number at 0th index: ", numbers)
 
 # print("=== Invalid Test Cases ===")
 # int x=12; print(x")

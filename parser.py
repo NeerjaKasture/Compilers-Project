@@ -118,6 +118,16 @@ class ArrayAssignment(AST):
     value: AST
 
 @dataclass
+class ArrayAppend(AST):
+    array: AST
+    value: AST
+
+@dataclass
+class ArrayDelete(AST):
+    array: AST
+    index: AST
+
+@dataclass
 class Input(AST):
     type: str  
 
@@ -215,6 +225,15 @@ def parse(s: str) -> AST:
                     if next(t) != ParenthesisToken(")"):
                         raise ParseError("Expected ')' after function arguments", t.peek())
 
+                    # Check for array operations
+                    if name.endswith(".append") and len(args) == 1:
+                        array_name = name.split(".")[0]
+                        return ArrayAppend(Variable(array_name), args[0])
+
+                    if name.endswith(".delete") and len(args) == 1:
+                        array_name = name.split(".")[0]
+                        return ArrayDelete(Variable(array_name), args[0])
+                    
                     return FunctionCall(name, args)
                 case _:
                     raise ParseError("Expected function name for function call", t.peek())
