@@ -1,74 +1,12 @@
-print("=== Input Tests ===")
-print("Enter any number: ")
-int siri = input()
-print(siri*2)
-print("Enter any float number: ")
-float har = input()
-print(har)
-print("Enter any string: ")
-string aks = input()
-print(aks)
-
-print("=== Print Tests ===")
-print("5+3=",5+3)
-print("Mom and Dad")
-print("HI")
-int x=12
-print(x)
-
-print("=== Expression Tests ===")
-int a=5; int b=10;
-print("This is a: ", a, " and this is b: ", b)
-print("addition:", a + b);
-print("multiplication:", a * b)
-print("a<b:", a < b)
-print("a>b:", a > b)
-print("a==b:", a == b)
-print("a!=b:", a != b)
-
-print("=== Array Tests ===")
-int[] arr = [1, 2, 3]; 
-print("arr[0]: ", arr[0]);
-int first_element = arr[0];
-print("first_element: ", first_element)
-print("sum: ", arr[0]+arr[1]+arr[2])
-arr[0] = 10
-print("arr[0]: ", arr[0]);
-string[] team = ["saloni", "anura", "neerja", "srijahnavi", "siri"]
-print("These are our team members: ")
-for (int i=0; i<5; i=i+1) {print(team[i])}
-int[] numbers = [10, 20, 30, 40, 50];
-print(numbers)
-numbers.append(60)
-print("After appending a new element: ", numbers)
-numbers.delete(0)
-print("After deleting number at 0th index: ", numbers)
-
-# print("=== Invalid Test Cases ===")
-# int x=12; print(x")
-
-# int x=12; int y=2; if (x < 4 { x=10; y=2} else { x=15; y=45}; print(y);
-# int x=12; int y=2; if x < 4) { x=10; y=2} else { x=15; y=45}; print(y);
-# int x=12; int y=2; if (x < 4) { x=10; y=2 else { x=15; y=45}; print(y);"
-# int x=12; int y=2; if (x < 4) { x=10; y=2} elif (x < 8 ) { x=20; y=30 elif (x < 10) { x=40; y=60} else { x=15; y=45}; print(y);  # Missing closing parenthesis in elif condition
-# int x=12; int y=2; if (x < 4) { x=10; y=2} elif (x < 8 ) { x=20; y=30} elif (x < 10) { x=40; y=60} else { x=15; y=45; print(y); # Missing closing brace in else body
-
-print("=== Loop Tests ===")
-for (int i=0; i<3; i=i+1){
-    for(int j=0; j<2; j=j+1){
-        print(j)
-    }
-    print(i)
-    }
-int i=0; 
-while (i < 3) { 
-    print(i); 
-    i = i + 1
+print("=== Function Tests ===");
+def func(int x) {
+    print(x);
 }
+func(1);
 
-print("=== If-Elif-Else Tests ===")
-int x = 3;
-if (x > 5){ x = x + 1 }
-else { x = x - 1 }
-print(x)
+def func(int a, int b) -> bool {
+    return a>b;
+    # return a/b; ERROR
+}
+print(func(2,3));
 
