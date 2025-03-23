@@ -1,12 +1,11 @@
-print("=== Function Tests ===");
-def func(int x) {
-    print(x);
+def check(int x)-> int{
+    for(int i=x;i<10;i=i+1){
+        print(i);
+        if(i==5){
+            return 55
+        }
+      
+    }
+    return 0
 }
-func(1);
-
-def func(int a, int b) -> bool {
-    return a>b;
-    # return a/b; ERROR
-}
-print(func(2,3));
-
+print(check(2));
