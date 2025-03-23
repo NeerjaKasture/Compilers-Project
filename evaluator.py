@@ -166,6 +166,7 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
                 if not all(isinstance(x, base_type) for x in val):
                     raise TypeError(f"All elements in array '{var_name}' must be of type {get_base_type(var_type)}")
             elif not isinstance(val, datatypes[var_type]):
+                \
                 raise TypeError(f"Variable '{var_name}' must be of type {var_type}")
 
             env[var_name] = val
