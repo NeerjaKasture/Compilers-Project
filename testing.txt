@@ -16,7 +16,7 @@ if (num > 0) {
     print("Negative number");
 } else {
     print("Zero");
-};
+}
 
 if (x > 5) { 
     print("Greater"); 
@@ -24,13 +24,13 @@ if (x > 5) {
     print("Equal"); 
 } else { 
     print("Less"); 
-};
+}
 
 if (y > 2.5 and z == true) { 
     print("Complex condition true"); 
 } else { 
     print("Complex condition false"); 
-};
+}
 
 if (msg == "Hello") {
     print("String match");
@@ -41,14 +41,14 @@ if (msg == "Hello") {
 } else {
     print("No match");
     z = false;
-};
+}
 
 if (x > 0 and y < 5.0 or z == true) {
     print("Multiple conditions met");
     print(x);
     print(y);
     print(z);
-};
+}
 
 if (num != 10) {
     x = x + 1;
@@ -56,7 +56,7 @@ if (num != 10) {
 } else {
     x = x - 1;
     print("Decreased x:", x);
-};
+}
 
 print("===== Nested If-Else Tests =====");
 int a = 40;
@@ -71,8 +71,8 @@ if (a > b) {
             print("a > c > b");
         } else {
             print("c > a > b");
-        };
-    };
+        }
+    }
 } else {
     if (a > c) {
         print("b > a > c");
@@ -81,9 +81,9 @@ if (a > b) {
             print("b > c > a");
         } else {
             print("c > b > a");
-        };
-    };
-};
+        }
+    }
+}
 
 if (x > 0) {
     if (y > 2.0 and z == true) {
@@ -92,43 +92,43 @@ if (x > 0) {
             print("Deepest nesting");
         } else {
             print("Deep nest else");
-        };
+        }
     } else {
         print("Complex nested condition 2");
-    };
+    }
 } else {
     print("Outer else");
-};
+}
 
 print("===== For Loop Tests =====");
 # Basic for loop
 for (int i = 0; i < 5; i = i + 1) {
     print("Iteration:", i);
-};
+}
 
 for (int j = 10; j > 0 and x < 10; j = j - 2) {
     print("Count down:", j);
     x = x + 1;
-};
+}
 
 for (int i = 1; i < 3; i = i + 1) {
     for (int j = 1; j < 3; j = j + 1) {
         print("i:", i, " j:", j);
-    };
-};
+    }
+}
 
 print("===== While Loop Tests =====");
 int count = 0;
 while (count < 5) {
     print("Count is:", count);
     count = count + 1;
-};
+}
 
 while (x < 12) {
     print("x:", x, " y:", y);
     x = x + 1;
     y = y - 0.5;
-};
+}
 
 int outer = 1;
 while (outer < 3) {
@@ -136,19 +136,20 @@ while (outer < 3) {
     while (inner < 3) {
         print("outer:", outer, " inner:", inner);
         inner = inner + 1;
-    };
+    }
     outer = outer + 1;
-};
+}
 
 print("===== Function Tests =====");
 def add(int a, int b) -> int {
-    return a+b;
+    return a+b
 }
 print("Add result:", add(5, 3));
 
 print("===== Array Tests =====");
 int[] numbers = [1, 2, 3, 4, 5];
 print("Original array:", numbers);
+print("Sum of all elements: ", numbers[0]+numbers[1]+numbers[2]+numbers[3]+numbers[4]);
 
 print("First element:", numbers[0]);
 numbers[2] = 10;
@@ -156,7 +157,7 @@ print("Modified array:", numbers);
 
 for (int i = 0; i < 5; i = i + 1) {
     numbers[i] = numbers[i] * 2;
-};
+}
 print("Doubled array:", numbers);
 
 numbers.append(6);

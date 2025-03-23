@@ -304,33 +304,20 @@ def parse(s: str) -> AST:
     
     def parse_print():
         next(t)  # Consume 'print'
+        
         if t.peek(None) != ParenthesisToken("("):
             raise ParseError("Expected '(' after print keyword", t.peek())
         next(t)  # Consume '('
         
         values = []
         while t.peek(None) and not isinstance(t.peek(None), ParenthesisToken):
-            if isinstance(t.peek(None), VariableToken):
-                
-                var_name = next(t).val
-                
-                if t.peek(None) == ParenthesisToken('['):
-                    next(t)  # Consume '['
-                    index = parse_comparator()
-                    if next(t) != ParenthesisToken(']'):
-                        raise ParseError("Expected ']' after array index", t.peek())
-                    values.append(ArrayAccess(Variable(var_name), index))
-                else:
-                    t.prepend(VariableToken(var_name))
-                    values.append(parse_comparator())
-            else:
-                values.append(parse_comparator())
-                
+            values.append(parse_comparator())  # Always use parse_comparator to handle full expressions
+            
             if t.peek(None) == SymbolToken(","):
-                next(t)
+                next(t)  # Consume ','
             else:
                 break
-        
+
         if next(t) != ParenthesisToken(")"):
             raise ParseError("Expected ')' after print arguments", t.peek())
 
