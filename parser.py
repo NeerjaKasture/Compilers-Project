@@ -246,7 +246,7 @@ def parse(s: str) -> AST:
                                 param_type_token = next(t)
 
                                 if not isinstance(param_type_token, TypeToken):
-                                    raise ParseError(f"Expected a type for function parameter, got {param_type_token}", t.peek())
+                                    raise TypeError("type for function parameter", str(param_type_token))
 
                                 param_type = param_type_token.val
 
@@ -269,7 +269,7 @@ def parse(s: str) -> AST:
                             if t.peek(None) == SymbolToken("->"):
                                 next(t)
                                 if not isinstance(t.peek(None), TypeToken):
-                                    raise ParseError("Expected return type after '->'", t.peek())
+                                    raise TypeError("return type", str(t.peek(None)))
                                 return_type = next(t).val
                             else:
                                 return_type = 'void'
@@ -296,7 +296,7 @@ def parse(s: str) -> AST:
                             return function
                         
                         case _:
-                            raise ParseError("Expected function name after 'def'", t.peek())
+                            raise NameError("function name")
         except ParseError as e:
             print(e)
             return None
@@ -518,13 +518,13 @@ def parse(s: str) -> AST:
             match t.peek(None):
                 case TypeToken(var_type):
                     if var_type not in datatypes.keys():
-                        raise ParseError(f"Invalid type: {var_type}", t.peek())
+                        raise TypeError("valid type", var_type)
                     else:
                         next(t)
                         match t.peek(None):
                             case VariableToken(var_name):
                                 if var_name in keywords:
-                                    raise ParseError(f"Invalid variable name: {var_name}", t.peek())
+                                    raise InvalidVariableNameError(var_name)
                                 else:
                                     next(t)
                                     match t.peek(None):
@@ -570,7 +570,7 @@ def parse(s: str) -> AST:
                                 match t.peek(None):
                                     case VariableToken(var_name):
                                         if var_name in keywords:
-                                            raise ParseError(f"Invalid variable name: {var_name}", t.peek())
+                                            raise InvalidVariableNameError(var_name)
                                         else:
                                             next(t)
                                             match t.peek(None):
@@ -606,7 +606,7 @@ def parse(s: str) -> AST:
                             next(t)
                             ast = BinOp(op, ast, parse_add())
                         else:
-                            raise ParseError("Unexpected operator", t.peek())
+                            raise InvalidOperationError(str(op), "comparison")
                     case _:
                         return ast
         except ParseError as e:
