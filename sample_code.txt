@@ -1,8 +1,25 @@
-print("=== Function Tests ===");
-def func(int x) {
-    print(x);
+
+def f(int n) -> int {
+    if(n==0){
+        return 1
+    }
+    return n * f(n-1)
 }
-func(1);
+
+print(f(5));
+
+
+def fib(int n) -> int {
+    if (n == 1 ) {
+        return n
+    }
+    elif( n==0 ){
+        return n
+    }
+    return fib(n - 1) + fib(n - 2)
+}
+
+print(fib(6));
 
 def power(int base, int exp) -> int {
     if (exp == 0) {
@@ -10,5 +27,5 @@ def power(int base, int exp) -> int {
     }
     return base * power(base, exp - 1)
 }
-print(func(2,3));
 
+print(power(2, 4));
