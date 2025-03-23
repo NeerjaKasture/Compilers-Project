@@ -132,63 +132,67 @@ class Input(AST):
     type: str  
 
 
-MAX_RECURSION_DEPTH = 1000  # Prevent infinite recursion
-function_call_stack = []
+
+inside_function=False
 
 def parse(s: str) -> AST:
     t = peekable(lex(s))
-
-    def parse_sequence(inside_function=False):
+    
+    def parse_sequence():
         statements = []
         
         while True:
             try:
                 token=t.peek(None)
-                
                 if token is None:
                     break
                 match t.peek(None): 
-                    case KeywordToken("def"):  
+                    case KeywordToken("def"): 
+                        
                         statements.append(parse_function())
-                         
+                        
                     case KeywordToken("return"):
                         
-                        if not inside_function:
-                            raise RuntimeError("Return statement outside Function body")
+                        # if not inside_function:
+                        #     raise ParseError("Return statement outside Function body", t.peek())
                         next(t)
                         expr = parse_comparator()
+                        
                        
                         statements.append(Return(expr))
                         
-                        while t.peek(None) and not (isinstance(t.peek(None), ParenthesisToken) and t.peek(None).val == "}"):
-                            next(t)
+                        # while t.peek(None) and t.peek(None) != ParenthesisToken("}"):
+                        #     next(t)
                         
                         break
 
                     case KeywordToken("print"):
                         statements.append(parse_print())
-                    case ParenthesisToken("}"):
+                    case ParenthesisToken("}"):  
                         break
                     case _:
                         stmt = parse_condition()
+                        
                         statements.append(stmt)
-
-                if isinstance(statements[-1], Function): # temporary, get a better fix
-                    continue
                 
-                if isinstance(t.peek(None), SymbolToken) and t.peek(None).val == ";":
-                    next(t)   
-                else:
-                    raise ParseError("Expected ';' after statement", t.peek())
+                if isinstance(statements[-1], (Cond,Function,For,While)):
+                    pass 
+                else: 
+                    if isinstance(t.peek(None), SymbolToken) and t.peek(None).val == ";":
+                        next(t)   
+                    else:
+                        raise ParseError("Expected ';' after statement", t.peek())
 
             except ParseError as e:
                 print(e)
                 break
-        return Sequence(statements) if len(statements) > 1 else statements[0]
+        return Sequence(statements) 
                         
     def parse_function_call():
         try:
+            
             match t.peek(None):
+                
                 case VariableToken(name):
                     next(t) 
 
@@ -205,7 +209,7 @@ def parse(s: str) -> AST:
                             next(t)
                         else:
                             break
-
+                    
                     if next(t) != ParenthesisToken(")"):
                         raise ParseError("Expected ')' after function arguments", t.peek())
 
@@ -230,6 +234,7 @@ def parse(s: str) -> AST:
             match t.peek(None):
                 case KeywordToken("def"):  # Function return type
                     next(t)
+                    
                     match t.peek(None):
                         case VariableToken(name):
                             next(t)
@@ -273,17 +278,23 @@ def parse(s: str) -> AST:
                             if next(t) != ParenthesisToken("{"):
                                 raise ParseError("Expected { before function body", t.peek())
                             
+
+                            global inside_function
+                            inside_function=True
+
                                 # **Store function before parsing the body to allow recursion**
                             function = Function(name, params, return_type, None)
+                            
 
-                            function.body = parse_sequence(inside_function=True)
+                            function.body = parse_sequence()
                             
                             
                             if next(t) != ParenthesisToken("}"):
-                                raise ParseError("Expected } after function body", t.peek())
+                               raise ParseError("Expected } after function body", t.peek())
                             
-                            
+                            inside_function=False
                             return function
+                        
                         case _:
                             raise NameError("function name")
         except ParseError as e:
@@ -300,6 +311,7 @@ def parse(s: str) -> AST:
         values = []
         while t.peek(None) and not isinstance(t.peek(None), ParenthesisToken):
             if isinstance(t.peek(None), VariableToken):
+                
                 var_name = next(t).val
                 
                 if t.peek(None) == ParenthesisToken('['):
@@ -310,7 +322,7 @@ def parse(s: str) -> AST:
                     values.append(ArrayAccess(Variable(var_name), index))
                 else:
                     t.prepend(VariableToken(var_name))
-                    values.append(parse_function_call())
+                    values.append(parse_comparator())
             else:
                 values.append(parse_comparator())
                 
@@ -342,7 +354,7 @@ def parse(s: str) -> AST:
 
                     if not isinstance(t.peek(None), ParenthesisToken) or t.peek(None).val != '{':
                         raise ParseError("Expected '{' after if condition", t.peek())
-
+                    
                     next(t) 
                     if_branch = parse_sequence()
                     
@@ -386,6 +398,8 @@ def parse(s: str) -> AST:
 
                         next(t)  
                         else_branch = parse_sequence()  
+
+                        
                         if t.peek(None) != ParenthesisToken('}'):
                             raise ParseError("Expected '}' after else body", t.peek())
                         next(t)  
@@ -526,7 +540,7 @@ def parse(s: str) -> AST:
                                                     raise ParseError("Expected ')' after input", t.peek())
                                                 next(t) 
                                                 return Declaration(var_type, var_name, Input(var_type))
-                                            value = parse_comparator()
+                                            value = parse_function_call()
                                             # **FIX: Ensure arr[0] is parsed as ArrayAccess**
                                             if isinstance(value, Variable) and t.peek(None) == ParenthesisToken('['):
                                                 next(t)
@@ -705,7 +719,13 @@ def parse(s: str) -> AST:
                         if next(t) != ParenthesisToken(']'):
                             raise ParseError("Expected ']' after array index", t.peek())
                         return ArrayAccess(Variable(v), index)
-                    return Variable(v)  # If no `[`, treat as normal variable
+                      # If no `[`, treat as normal variable
+                    
+                    if t.peek(None) == ParenthesisToken("("):
+                        t.prepend(VariableToken(v))
+                        return parse_function_call()
+                    
+                    return Variable(v)
                 case NumberToken(v):
                     next(t)
                     return Number(v)

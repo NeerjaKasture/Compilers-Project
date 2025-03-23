@@ -94,16 +94,15 @@ def lex(s: str) -> Iterator[Token]:
                 i += 1
             continue
 
-        
 
         else:
             match s[i]:
-                case '+' | '*' | '-' | '/' | '^' | '(' | ')' | '<' | '>' | '=' | '!' | '~' | '{' | '}' | ';' | ',' | '[' | ']' | '->':
+                case '+' | '*' | '-' | '/' | '^' | '(' | ')' | '<' | '>' | '=' | '!' | '~' | '{' | '}' | ';' | ',' | '[' | ']' | '->'|'$':
                     if s[i] in '<>=!' and i + 1 < len(s) and s[i + 1] == '=':
                         yield OperatorToken(s[i:i + 2])
                         i += 2
                     else:
-                        if s[i] in "}(){[]":
+                        if s[i] in "}(){[]$":
                             yield ParenthesisToken(s[i])
                         elif s[i] == '-' and i + 1 < len(s) and s[i + 1] == '>':
                             yield SymbolToken('->')

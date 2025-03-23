@@ -6,11 +6,11 @@ class ParseError(Exception):
         self.token = token
         self.message = message
 
-class TypeError(Exception):
-    def __init__(self, expected, actual):
-        super().__init__(f"Type error: expected {expected}, got {actual}")
-        self.expected = expected
-        self.actual = actual
+# class TypeError(Exception):
+#     def __init__(self, expected, actual):
+#         super().__init__(f"Type error: expected {expected}, got {actual}")
+#         self.expected = expected
+#         self.actual = actual
 
 class ValueError(Exception):
     def __init__(self, message):

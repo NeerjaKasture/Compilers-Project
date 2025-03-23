@@ -9,7 +9,7 @@ def is_array_type(type_str: str) -> bool:
 def get_base_type(type_str: str) -> str:
     return type_str[:-2] if is_array_type(type_str) else type_str
 
-
+MAX_RECURSION_DEPTH = 1000
 def e(tree: AST, env={}, types={}, call_stack=[]):
 
     match tree:
@@ -70,11 +70,10 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
                 local_types[param_name] = param_type 
             
             call_stack.append((local_env,local_types))   
-            
+            if(len(call_stack)>MAX_RECURSION_DEPTH):
+                raise RecursionLimitError(name)
             result = e(func.body, local_env, local_types,call_stack)
-            
-            
-        
+            result=e(result)
             if func.return_type != "void" and not isinstance(result, datatypes[func.return_type]):
                 raise TypeError(f"Function '{name}' must return a value of type {func.return_type}, but got {type(result).__name__}")
 
@@ -86,14 +85,14 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
             if not call_stack:
                 raise RuntimeError("Return statement executed outside of function scope")
             local_env,local_types = call_stack[-1]
-            
+           
             res = e(expr, local_env, local_types,call_stack)
             
             return res
 
         case Boolean(v):
             if v == "true":
-                return True # how would we make our compiler evaluate 'true' as True but still return true as output
+                return True 
             else:
                 return False
         case Parenthesis(expr):
@@ -140,6 +139,7 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
                     return e(l) != e(r)
         case Cond(If, Elif, Else):
             if e(If[0]):
+                
                 return e(If[1])  # Execute the 'If' body
 
             # If there are any 'elif' conditions, check each one
@@ -167,6 +167,7 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
                 if not all(isinstance(x, base_type) for x in val):
                     raise TypeError(f"All elements in array '{var_name}' must be of type {get_base_type(var_type)}")
             elif not isinstance(val, datatypes[var_type]):
+                \
                 raise TypeError(f"Variable '{var_name}' must be of type {var_type}")
 
             env[var_name] = val
@@ -175,7 +176,7 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
             types[var_name] = var_type
 
 
-            return val
+            return 
         
         case Assignment(var_name, value):
             if var_name not in env:
@@ -187,15 +188,26 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
                 raise TypeError(f"Variable '{var_name}' must be of type {types[var_name]}")
 
             env[var_name] = val
-            return val
+            return 
         
         case While(condition, body):
             while e(condition, env, types):
                 if isinstance(body, Sequence):
                     for stmt in body.statements:
                         result = e(stmt, env, types)
+
+                        if isinstance(result,Return):
+                            return result
+                        elif isinstance(stmt, Return):
+                            # If return is encountered, stop execution
+                            return stmt 
                 else:
                     result = e(body, env, types)
+                    if isinstance(result,Return):
+                        return result
+                    elif isinstance(stmt, Return):
+                        # If return is encountered, stop execution
+                        return stmt 
             return None
         
         case For(init, condition, increment, body):
@@ -205,20 +217,33 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
                 if isinstance(body, Sequence):
                     for stmt in body.statements:
                         xy = e(stmt, env, types)  # Execute loop body
-                        if xy is not None:
-                            print(xy)
+                        
+                        if isinstance(xy,Return):
+                            return xy
+                        elif isinstance(stmt, Return):
+                            return stmt 
                 else:
                     xy = e(body, env, types)
-                    if xy is not None:
-                        print(xy)
+                    
+                    if isinstance(xy,Return):
+                            return xy
+                    elif isinstance(stmt, Return):
+                        return stmt 
                 e(increment, env, types)  # Execute increment (e.g., i = i + 1)
             return xy
 
         case Sequence(statements):
             last_value = []
             for stmt in statements:
-                last_value.append(e(stmt, env, types))  # Evaluate each statement
+                last_value=e(stmt, env, types,call_stack)  # Evaluate each statement
+                if isinstance(last_value,Return):
+                    return last_value
+                elif isinstance(stmt, Return):
+                      # If return is encountered, stop execution
+                    return stmt  
+                
             return last_value
+        
         case String(v):
             return v
         case Concat(left, right):

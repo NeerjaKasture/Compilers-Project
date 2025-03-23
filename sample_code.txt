@@ -4,16 +4,11 @@ def func(int x) {
 }
 func(1);
 
-def func(int a, int b) -> bool {
-    return a>b;
-    # return a/b; ERROR
+def power(int base, int exp) -> int {
+    if (exp == 0) {
+        return 1
+    }
+    return base * power(base, exp - 1)
 }
 print(func(2,3));
 
-print("===== Input Tests =====");
-int x = input();
-print(x);
-float p = input();
-print(p*2);
-string name = input();
-print("hi! ", name);
