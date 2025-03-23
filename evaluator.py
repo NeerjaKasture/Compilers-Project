@@ -9,7 +9,7 @@ def is_array_type(type_str: str) -> bool:
 def get_base_type(type_str: str) -> str:
     return type_str[:-2] if is_array_type(type_str) else type_str
 
-
+MAX_RECURSION_DEPTH = 1000
 def e(tree: AST, env={}, types={}, call_stack=[]):
 
     match tree:
@@ -70,7 +70,8 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
                 local_types[param_name] = param_type 
             
             call_stack.append((local_env,local_types))   
-              
+            if(len(call_stack)>MAX_RECURSION_DEPTH):
+                raise RecursionLimitError(name)
             result = e(func.body, local_env, local_types,call_stack)
             result=e(result)
             if func.return_type != "void" and not isinstance(result, datatypes[func.return_type]):

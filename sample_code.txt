@@ -1,93 +1,31 @@
 
-print("=== Function Tests ===");
-def func(int x) {
-    print(x);
-}
-print(func(1));
-
-def func(int a,int b) -> int{
-    return a+b
-}
-print(func(2,3));
-def check(int x) -> string {
-    if (x > 0) {
-        return "Positive"
-    }
-    return "Non-positive"
-}
-print(check(5));   
-print(check(~2));
-
-def checks(int x)-> int{
-    for(int i=x;i<10;i=i+1){
-        print(i);
-        if(i==5){
-            return 55
-        }
-      
-    }
-    return 0
-}
-print(checks(2));
-
-def func( string s) -> string {
-    s="Hello";
-    return s
-}
-string s="No";
-print(func(s));
-print(s);
-
-
-def check(int x)-> int{
-    for(int i=x;i<10;i=i+1){
-        print(i);
-        if(i==5){
-            return 55
-        }
-      
-    }
-    return 0
-}
-print(check(2));
-
-def changeVar(int x) -> int {
-    x = x + 10;
-    return x
-}
-int x = 5;
-print(changeVar(x));  # Expected: 15
-print(x);             # Expected: 5 (Global x should remain unchanged)
-
-
-def add(int a, int b) -> int {
-    return a + b
-}
-def multiply(int x, int y) -> int {
-    return x * y
-}
-print(multiply(add(2, 3), 4)); 
-
-def multiply(int x, int y) -> int {
-    return x * y
-}
-
-def square(int x) -> int {
-    return multiply(x, x)
-}
-
-print(square(5)); 
-
 def f(int n) -> int {
-    return n
+    if(n==0){
+        return 1
+    }
+    return n * f(n-1)
 }
 
-int x = f(3);
-print(x*3);
+print(f(5));
 
-def f(int n) -> int {
-    return n
+
+def fib(int n) -> int {
+    if (n == 1 ) {
+        return n
+    }
+    elif( n==0 ){
+        return n
+    }
+    return fib(n - 1) + fib(n - 2)
 }
 
+print(fib(6));
 
-print(f(3)*3);
+def power(int base, int exp) -> int {
+    if (exp == 0) {
+        return 1
+    }
+    return base * power(base, exp - 1)
+}
+
+print(power(2, 4));

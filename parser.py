@@ -132,8 +132,6 @@ class Input(AST):
     type: str  
 
 
-MAX_RECURSION_DEPTH = 1000  # Prevent infinite recursion
-function_call_stack = []
 
 inside_function=False
 
@@ -158,7 +156,7 @@ def parse(s: str) -> AST:
                         # if not inside_function:
                         #     raise ParseError("Return statement outside Function body", t.peek())
                         next(t)
-                        expr = parse_function_call()
+                        expr = parse_comparator()
                         
                        
                         statements.append(Return(expr))
