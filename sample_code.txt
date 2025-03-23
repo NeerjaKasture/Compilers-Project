@@ -10,3 +10,10 @@ def func(int a, int b) -> bool {
 }
 print(func(2,3));
 
+print("===== Input Tests =====");
+int x = input();
+print(x);
+float p = input();
+print(p*2);
+string name = input();
+print("hi! ", name);
