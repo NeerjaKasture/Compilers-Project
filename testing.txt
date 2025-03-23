@@ -9,6 +9,8 @@ print(z);
 print(msg);
 
 print("=====If-else test cases=====");
+
+print("test_no_1");
 int num = input();
 if (num > 0) {
     print("Positive number");
@@ -18,6 +20,7 @@ if (num > 0) {
     print("Zero");
 }
 
+print("test_no_2");
 if (x > 5) { 
     print("Greater"); 
 } elif (x == 5) { 
@@ -26,12 +29,14 @@ if (x > 5) {
     print("Less"); 
 }
 
+print("test_no_3");
 if (y > 2.5 and z == true) { 
     print("Complex condition true"); 
 } else { 
     print("Complex condition false"); 
 }
 
+print("test_no_4");
 if (msg == "Hello") {
     print("String match");
     x = x + 1;
@@ -43,6 +48,7 @@ if (msg == "Hello") {
     z = false;
 }
 
+print("test_no_5");
 if (x > 0 and y < 5.0 or z == true) {
     print("Multiple conditions met");
     print(x);
@@ -50,6 +56,7 @@ if (x > 0 and y < 5.0 or z == true) {
     print(z);
 }
 
+print("test_no_6");
 if (num != 10) {
     x = x + 1;
     print("Updated x:", x);
@@ -63,6 +70,7 @@ int a = 40;
 int b = 100;
 int c = 500;
 
+print("test_no_1");
 if (a > b) {
     if (b > c) {
         print("a > b > c");
@@ -85,6 +93,7 @@ if (a > b) {
     }
 }
 
+print("test_no_2");
 if (x > 0) {
     if (y > 2.0 and z == true) {
         print("Complex nested condition 1");
@@ -101,16 +110,20 @@ if (x > 0) {
 }
 
 print("===== For Loop Tests =====");
+
+print("test_no_1");
 # Basic for loop
 for (int i = 0; i < 5; i = i + 1) {
     print("Iteration:", i);
 }
 
+print("test_no_2");
 for (int j = 10; j > 0 and x < 10; j = j - 2) {
     print("Count down:", j);
     x = x + 1;
 }
 
+print("test_no_3");
 for (int i = 1; i < 3; i = i + 1) {
     for (int j = 1; j < 3; j = j + 1) {
         print("i:", i, " j:", j);
@@ -119,17 +132,21 @@ for (int i = 1; i < 3; i = i + 1) {
 
 print("===== While Loop Tests =====");
 int count = 0;
+
+print("test_no_1");
 while (count < 5) {
     print("Count is:", count);
     count = count + 1;
 }
 
+print("test_no_2");
 while (x < 12) {
     print("x:", x, " y:", y);
     x = x + 1;
     y = y - 0.5;
 }
 
+print("test_no_3");
 int outer = 1;
 while (outer < 3) {
     int inner = 1;
@@ -140,32 +157,128 @@ while (outer < 3) {
     outer = outer + 1;
 }
 
-print("===== Function Tests =====");
-def add(int a, int b) -> int {
-    return a+b
-}
-print("Add result:", add(5, 3));
-
 print("===== Array Tests =====");
+
+print("test_no_1");
 int[] numbers = [1, 2, 3, 4, 5];
 print("Original array:", numbers);
 print("Sum of all elements: ", numbers[0]+numbers[1]+numbers[2]+numbers[3]+numbers[4]);
 
+print("test_no_2");
 print("First element:", numbers[0]);
 numbers[2] = 10;
 print("Modified array:", numbers);
 
+print("test_no_3");
 for (int i = 0; i < 5; i = i + 1) {
     numbers[i] = numbers[i] * 2;
 }
 print("Doubled array:", numbers);
 
+print("test_no_4");
 numbers.append(6);
 print("After append:", numbers);
 numbers.delete(0);
 print("After delete:", numbers);
 
+print("test_no_5");
 string[] words = ["Hello", "World"];
 print("String array:", words);
 words[0] = "hi";
 print("Modified string array:", words);
+
+print("test_no_6");
+int[] complexArray = [3, 6, 9, 12];
+if (complexArray[0] < complexArray[1]) {
+    if (complexArray[1] < complexArray[2]) {
+        if (complexArray[2] < complexArray[3]) {
+            print("Fully ordered array");
+        }
+    }
+}
+
+print("===== Function Tests =====");
+
+print("test_no_1");
+# Function that returns the square of a number
+def square(int n) -> int {
+    return n * n
+}
+print(square(4));  # Expected Output: 16
+
+print("test_no_2");
+# Function to check if a number is even (without using %)
+def isEven(int n) -> int {
+    if ((n / 2) * 2 == n) {
+        return 1
+    }
+    return 0
+}
+print(isEven(10));  # Expected Output: 1
+print(isEven(7));   # Expected Output: 0
+
+print("test_no_3");
+# Function that returns an array of numbers
+def getArray(int n) -> int[] {
+    return [1, 2, 3, 4, 5]
+}
+print(getArray(5));  # Expected Output: [1, 2, 3, 4, 5]
+
+print("test_no_4");
+# Function that returns an empty array
+def emptyArray() -> int[] {
+    return []
+}
+print(emptyArray());  # Expected Output: []
+
+print("test_no_5");
+# Function that generates an array of multiples of 3
+def generateArray(int n) -> int[] {
+    if (n <= 0) {
+        return []
+    }
+    int[] arr = [];
+    for (int i = 0; i < n; i = i + 1) {
+        arr.append(i * 3);
+    }
+    return arr
+}
+print(generateArray(5));  # Expected Output: [0, 3, 6, 9, 12]
+
+print("test_no_6");
+# Function that doubles each element in the array
+def doubleArray(int [] arr) -> int [] {
+    for (int i = 0; i < 3; i = i + 1) {
+        arr[i] = arr[i] * 2;
+    }
+    return arr
+}
+int[] a = [1, 2, 3];
+print(doubleArray(a));  # Expected Output: [2, 4, 6]
+
+print("test_no_7");
+def modifyArray(int [] arr) {
+    arr[1] = 100;
+}
+int[] arrTest = [10, 20, 30];
+modifyArray(arrTest);
+print(arrTest);  # Expected Output: [10, 100, 30]
+
+print("test_no_8");
+def increment(int n) -> int {
+    return n + 1
+}
+print(increment(square(3)));  # Expected Output: 10
+
+print("test_no_9");
+def createArray(int n) -> int[] {
+    int[] res = [];
+    for (int i = 0; i < n; i = i + 1) {
+        res.append(i);
+    }
+    return res
+}
+int[] newArr = createArray(4);
+for (int i = 0; i < 4; i = i + 1) {
+    print("Element:", newArr[i]);  # Expected Output: 0, 1, 2, 3
+}

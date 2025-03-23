@@ -1,31 +1,12 @@
-
-def f(int n) -> int {
-    if(n==0){
-        return 1
-    }
-    return n * f(n-1)
+print("test_no_4");
+# Function that returns an empty array
+def emptyArray() -> int[] {
+    return []
 }
+print(emptyArray());  # Expected Output: []
 
-print(f(5));
-
-
-def fib(int n) -> int {
-    if (n == 1 ) {
-        return n
-    }
-    elif( n==0 ){
-        return n
-    }
-    return fib(n - 1) + fib(n - 2)
+print("test_no_7");
+int[] emptyArr = [];
+for (int i = 0; i < 3; i = i + 1) {
+    print(emptyArr[i]);  # Should handle gracefully
 }
-
-print(fib(6));
-
-def power(int base, int exp) -> int {
-    if (exp == 0) {
-        return 1
-    }
-    return base * power(base, exp - 1)
-}
-
-print(power(2, 4));

@@ -98,6 +98,12 @@ def lex(s: str) -> Iterator[Token]:
         else:
             match s[i]:
                 case '+' | '*' | '-' | '/' | '^' | '(' | ')' | '<' | '>' | '=' | '!' | '~' | '{' | '}' | ';' | ',' | '[' | ']' | '->'|'$':
+                    if i + 1 < len(s):
+                        two_char_op = s[i:i + 2]
+                        if two_char_op in {"<=", ">=", "==", "!="}:  # Explicitly handle <=, >=
+                            yield OperatorToken(two_char_op)
+                            i += 2
+                            continue
                     if s[i] in '<>=!' and i + 1 < len(s) and s[i + 1] == '=':
                         yield OperatorToken(s[i:i + 2])
                         i += 2
