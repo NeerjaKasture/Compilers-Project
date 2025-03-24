@@ -91,9 +91,9 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
             return res
 
         case Boolean(v):
-            if v == "true":
+            if v == "nocap":
                 return True 
-            else:
+            elif v == "cap":
                 return False
         case Parenthesis(expr):
             return e(expr)
@@ -142,7 +142,7 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
                 case "|":  # Bitwise OR
                     return e(l) | e(r)
                 case "~~":  # Bitwise NOT (unary)
-                    return ~e(r)  # Only use `left`, `right` is None
+                    return not e(r)  # Only use `left`, `right` is None
         case Cond(If, Elif, Else):
             if e(If[0]):
                 
@@ -284,7 +284,7 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
             for value in values:
                 result = e(value, env, types)
                 if isinstance(result, bool): 
-                    result = "true" if result else "false"
+                    result = "nocap" if result else "cap"
                 results.append(result)
             # print(*results)  # This will print the values
             print("".join(map(str, results))) # this will print the values without adding extra space while printing

@@ -158,7 +158,7 @@ def parse(s: str) -> AST:
                         
                         statements.append(parse_function())
                         
-                    case KeywordToken("return"):
+                    case KeywordToken("yeet"):
                         
                         # if not inside_function:
                         #     raise ParseError("Return statement outside Function body", t.peek())
@@ -177,7 +177,7 @@ def parse(s: str) -> AST:
                         
                         break
 
-                    case KeywordToken("print"):
+                    case KeywordToken("yap"):
                         statements.append(parse_print())
                     case ParenthesisToken("}"):  
                         break
@@ -554,7 +554,7 @@ def parse(s: str) -> AST:
                                     match t.peek(None):
                                         case OperatorToken('='):
                                             next(t)
-                                            if isinstance(t.peek(None), VariableToken) and t.peek(None).val == "input":
+                                            if isinstance(t.peek(None), KeywordToken) and t.peek(None).val == "spill":
                                                 next(t)  # consume 'input'
                                                 if not isinstance(t.peek(None), ParenthesisToken) or t.peek(None).val != '(':
                                                     raise ParseError("Expected '(' after input", t.peek())
