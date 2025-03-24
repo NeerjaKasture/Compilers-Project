@@ -540,7 +540,7 @@ def parse(s: str) -> AST:
                                                     raise ParseError("Expected ')' after input", t.peek())
                                                 next(t) 
                                                 return Declaration(var_type, var_name, Input(var_type))
-                                            value = parse_function_call()
+                                            value = parse_comparator()
                                             # **FIX: Ensure arr[0] is parsed as ArrayAccess**
                                             if isinstance(value, Variable) and t.peek(None) == ParenthesisToken('['):
                                                 next(t)
