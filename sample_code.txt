@@ -12,3 +12,15 @@ def fib(int n) -> int {
 }
 
 print(fib(10));
+print("test_no_4");
+# Function that returns an empty array
+def emptyArray() -> int[] {
+    return []
+}
+print(emptyArray());  # Expected Output: []
+
+print("test_no_7");
+int[] emptyArr = [];
+for (int i = 0; i < 3; i = i + 1) {
+    print(emptyArr[i]);  # Should handle gracefully
+}

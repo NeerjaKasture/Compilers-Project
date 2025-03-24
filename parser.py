@@ -158,6 +158,10 @@ def parse(s: str) -> AST:
                         next(t)
                         expr = parse_comparator()
                         
+                        # If returning an array, ensure it’s valid
+                        # if isinstance(expr, Array):
+                        #     if not inside_function:
+                        #         raise ParseError("Return statement outside Function body", t.peek())
                        
                         statements.append(Return(expr))
                         
@@ -250,6 +254,13 @@ def parse(s: str) -> AST:
 
                                 param_type = param_type_token.val
 
+                                # Check if it's an array parameter (e.g., int[] arr)
+                                if t.peek(None) == ParenthesisToken("["):
+                                    next(t)
+                                    if next(t) != ParenthesisToken("]"):
+                                        raise ParseError("Expected ']' for array parameter", t.peek())
+                                    param_type += "[]"
+
                                 param_name_token = next(t)
 
                                 if not isinstance(param_name_token, VariableToken):
@@ -271,6 +282,12 @@ def parse(s: str) -> AST:
                                 if not isinstance(t.peek(None), TypeToken):
                                     raise TypeError("return type", str(t.peek(None)))
                                 return_type = next(t).val
+                                # Check if return type is an array (e.g., int[])
+                                if t.peek(None) == ParenthesisToken("["):
+                                    next(t)
+                                    if next(t) != ParenthesisToken("]"):
+                                        raise ParseError("Expected ']' for array return type", t.peek())
+                                    return_type += "[]"  # Mark it as an array type
                             else:
                                 return_type = 'void'
 
@@ -304,33 +321,20 @@ def parse(s: str) -> AST:
     
     def parse_print():
         next(t)  # Consume 'print'
+        
         if t.peek(None) != ParenthesisToken("("):
             raise ParseError("Expected '(' after print keyword", t.peek())
         next(t)  # Consume '('
         
         values = []
         while t.peek(None) and not isinstance(t.peek(None), ParenthesisToken):
-            if isinstance(t.peek(None), VariableToken):
-                
-                var_name = next(t).val
-                
-                if t.peek(None) == ParenthesisToken('['):
-                    next(t)  # Consume '['
-                    index = parse_comparator()
-                    if next(t) != ParenthesisToken(']'):
-                        raise ParseError("Expected ']' after array index", t.peek())
-                    values.append(ArrayAccess(Variable(var_name), index))
-                else:
-                    t.prepend(VariableToken(var_name))
-                    values.append(parse_comparator())
-            else:
-                values.append(parse_comparator())
-                
+            values.append(parse_comparator())  # Always use parse_comparator to handle full expressions
+            
             if t.peek(None) == SymbolToken(","):
-                next(t)
+                next(t)  # Consume ','
             else:
                 break
-        
+
         if next(t) != ParenthesisToken(")"):
             raise ParseError("Expected ')' after print arguments", t.peek())
 
@@ -505,6 +509,7 @@ def parse(s: str) -> AST:
                                 value = parse_comparator()
                                 return ArrayAssignment(Variable(var_name), index, value)
                             return ArrayAccess(Variable(var_name), index)
+                            
                         case _:
                             t.prepend(VariableToken(var_name))  # Put back the variable token
                             return parse_comparator()
@@ -597,7 +602,7 @@ def parse(s: str) -> AST:
             while True:
                 match t.peek(None):
                     case OperatorToken(op):
-                        if op in {"<", ">", "==", "!="}:
+                        if op in {"<", ">", "<=", ">=", "==", "!="}:  # added <=, >= and !=
                             next(t)
                             ast = BinOp(op, ast, parse_add())
                         elif op in {"and", "or"}:
