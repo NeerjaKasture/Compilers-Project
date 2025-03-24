@@ -156,7 +156,25 @@ while (outer < 3) {
     }
     outer = outer + 1;
 }
-
+print("test_no_4");
+int count=0;
+while (count < 10) {
+    print("Count is:", count);
+    if(count==3){
+        break;
+    }
+    count = count + 1;
+}
+print("test_no_5");
+int count=0;
+###########################infinite loop
+while (count < 10) {
+    print("Count is:", count);
+    if(count==3){
+      continue;   
+    }
+    count = count + 1;
+}
 print("===== Array Tests =====");
 
 print("test_no_1");
@@ -282,3 +300,4 @@ int[] newArr = createArray(4);
 for (int i = 0; i < 4; i = i + 1) {
     print("Element:", newArr[i]);  # Expected Output: 0, 1, 2, 3
 }
+

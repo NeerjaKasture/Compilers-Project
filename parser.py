@@ -55,6 +55,13 @@ class SemicolonToken(AST):
     s: str
 
 @dataclass
+class Break(AST):
+    pass
+
+@dataclass
+class Continue(AST):
+    pass
+@dataclass
 class Boolean(AST):
     val: str
 
@@ -480,6 +487,17 @@ def parse(s: str) -> AST:
                             return While(condition, body)
                         case _:
                             raise ParseError("Expected '{' after while condition", t.peek())
+                case KeywordToken('break'):
+                    next(t)  # Consume 'break'
+                    if t.peek(None) != SymbolToken(';'):
+                        raise ParseError("Expected ';' after 'break'", t.peek())
+                    return Break()
+
+                case KeywordToken('continue'):
+                    next(t)  # Consume 'continue'
+                    if t.peek(None) != SymbolToken(';'):
+                        raise ParseError("Expected ';' after 'continue'", t.peek())
+                    return Continue()
                 case _:
                     return parse_assignment()
         except ParseError as e:

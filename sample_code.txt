@@ -1,26 +1,7 @@
-
-
-def fib(int n) -> int {
-    if (n == 1 ) {
-        return n
+for (int i = 0; i < 7; i = i + 1) {
+    
+    if(i==3){
+        continue;
     }
-    elif( n==0 ){
-        return n
-    }
-    int x = fib(n - 1) + fib(n - 2);
-    return x
-}
-
-print(fib(10));
-print("test_no_4");
-# Function that returns an empty array
-def emptyArray() -> int[] {
-    return []
-}
-print(emptyArray());  # Expected Output: []
-
-print("test_no_7");
-int[] emptyArr = [];
-for (int i = 0; i < 3; i = i + 1) {
-    print(emptyArr[i]);  # Should handle gracefully
+    print("Iteration:", i);
 }
