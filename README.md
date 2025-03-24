@@ -15,7 +15,10 @@ Compilers-Project
 │── tesing.txt       
 
 ## Usage
-Run ```python compiler.py your_code.yap
+```
+python compiler.py your_code.yap
+```
+
 
 
 
