@@ -1,4 +1,4 @@
-keywords = {"if", "elif", "else", "true", "false", "print", "concat", "while", "for", "and", "or", "not", "def", "return", "void"}
+keywords = {"if", "elif", "else", "nocap", "cap", "yap", "concat", "while", "for", "and", "or", "not", "def", "yeet", "void"}
 
 datatypes = {
     "int": int, 

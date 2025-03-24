@@ -221,7 +221,7 @@ def parse(s: str) -> AST:
                         
                         statements.append(parse_function())
                         
-                    case KeywordToken("return"):
+                    case KeywordToken("yeet"):
                         
                         if not inside_function:
                             raise ParseError("Return statement outside Function body", t.peek())
@@ -240,7 +240,7 @@ def parse(s: str) -> AST:
                         
                         break
 
-                    case KeywordToken("print"):
+                    case KeywordToken("yap"):
                         statements.append(parse_print())
                     case ParenthesisToken("}"):  
                         break

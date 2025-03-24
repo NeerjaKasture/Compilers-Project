@@ -23,9 +23,9 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
                     case "string":
                         return str(user_input)
                     case "bool":
-                        if user_input.lower() == "true":
+                        if user_input.lower() == "nocap":
                             return True
-                        elif user_input.lower() == "false":
+                        elif user_input.lower() == "cap":
                             return False
                     case _:
                         raise TypeError(f"Unsupported input type: {inp_type}")
@@ -95,9 +95,9 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
             return res
 
         case Boolean(v):
-            if v == "true":
+            if v == "nocap":
                 return True 
-            elif v=="false":
+            elif v=="cap":
                 return False
         case Parenthesis(expr):
             return e(expr)

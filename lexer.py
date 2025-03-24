@@ -61,7 +61,7 @@ def lex(s: str) -> Iterator[Token]:
             if word in datatypes.keys():
                 yield TypeToken(word)
             elif word in keywords:
-                if word in ["true", "false"]:
+                if word in ["cap", "nocap"]:
                     yield BooleanToken(word)
                 elif word in ["and", "or", "not"]:
                     yield OperatorToken(word)
