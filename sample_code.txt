@@ -1,26 +1,8 @@
-
-
-def fib(int n) -> int {
-    if (n == 1 ) {
-        return n
-    }
-    elif( n==0 ){
-        return n
-    }
-    int x = fib(n - 1) + fib(n - 2);
+def changeVar(int x) -> int {
+    x = x + 10;
     return x
 }
+int x = 5;
+print(changeVar(x));  # Expected: 15
+print(x);             # Expected: 5 (Global x should remain unchanged)
 
-print(fib(10));
-print("test_no_4");
-# Function that returns an empty array
-def emptyArray() -> int[] {
-    return []
-}
-print(emptyArray());  # Expected Output: []
-
-print("test_no_7");
-int[] emptyArr = [];
-for (int i = 0; i < 3; i = i + 1) {
-    print(emptyArr[i]);  # Should handle gracefully
-}

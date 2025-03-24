@@ -131,7 +131,77 @@ class ArrayDelete(AST):
 class Input(AST):
     type: str  
 
+class SymbolTable:
+    def __init__(self, parent=None):
+        self.variables = {}  # Store variable_name: declared_type
+        self.functions = {}   # Stores function_name: (return_type, param_types)
+        self.parent = parent  # for nested scopes
 
+    def declare_variable(self, name, declared_type):
+        self.variables[name] = declared_type
+
+    def lookup_variable(self, name):
+        if name in self.variables:
+            return self.variables[name]  # Returns type
+        while self.parent:
+            return self.parent.lookup_variable(name)
+        raise NameError(f"Variable '{name}' is not declared")
+
+    # def declare_function(self, name, return_type, param_types):
+    #     """Declare a function with a return type and parameter types."""
+    #     if name in self.functions:
+    #         raise TypeError(f"Function '{name}' is already declared")
+
+    #     self.functions[name] = (return_type, param_types)
+
+    def lookup_function(self, name):
+        """Retrieve function return type and parameter types."""
+        if name in self.functions:
+            return self.functions[name]  # Returns (return_type, param_types)
+        if self.parent:
+            return self.parent.lookup_function(name)
+        raise NameError(f"Function '{name}' is not declared")
+
+    def enter_scope(self):
+        return SymbolTable(parent=self)
+
+    def exit_scope(self):
+        return self.parent
+
+def infer_type(node):
+
+    if isinstance(node, Number):
+        return "int" if '.' not in node.val else "float" 
+    if isinstance(node, String):
+        return "string" 
+    if isinstance(node, Boolean):
+        return "bool"
+    if isinstance(node, Variable):
+        declared_type = symbol_table.lookup_variable(node.val)
+        return declared_type
+    
+    if isinstance(node, Array):
+        element_type = infer_type(node.elements[0])  # Assume homogeneous array
+        return element_type + "[]"
+    
+    if isinstance(node, BinOp):
+        left_type = infer_type(node.left)
+        right_type = infer_type(node.right)
+
+        # Ensure both operands have the same type
+        if left_type != right_type:
+            raise TypeError(f"Type mismatch in binary operation '{node.op}': {left_type} and {right_type}")
+
+        return left_type  
+
+    if isinstance(node, FunctionCall):  
+        return_type, param_types = symbol_table.lookup_function(node.name)
+
+        return return_type  # Return function return type
+
+    raise TypeError(f"Unknown type for expression: {node}")
+
+symbol_table = SymbolTable()
 
 inside_function=False
 
@@ -153,8 +223,8 @@ def parse(s: str) -> AST:
                         
                     case KeywordToken("return"):
                         
-                        # if not inside_function:
-                        #     raise ParseError("Return statement outside Function body", t.peek())
+                        if not inside_function:
+                            raise ParseError("Return statement outside Function body", t.peek())
                         next(t)
                         expr = parse_comparator()
                         
@@ -194,18 +264,21 @@ def parse(s: str) -> AST:
                         
     def parse_function_call():
         try:
-            
             match t.peek(None):
-                
                 case VariableToken(name):
-                    next(t) 
+                    next(t)
 
-                    if t.peek(None) != ParenthesisToken("("):
+                    if t.peek(None) != ParenthesisToken("("):  # Not a function call, treat as expression
                         t.prepend(VariableToken(name))
                         return parse_comparator()
-                    
-                    next(t)
+
+                    next(t)  # Consume '('
                     args = []
+                    try:
+                        return_type, param_types = symbol_table.functions[name]
+                    except KeyError:
+                        raise NameError(f"Function '{name}' is not declared")
+
                     while t.peek(None) and not (isinstance(t.peek(None), ParenthesisToken) and t.peek(None).val == ")"):
                         args.append(parse_comparator())
 
@@ -213,11 +286,11 @@ def parse(s: str) -> AST:
                             next(t)
                         else:
                             break
-                    
+
                     if next(t) != ParenthesisToken(")"):
                         raise ParseError("Expected ')' after function arguments", t.peek())
 
-                    # Check for array operations
+                    # Handle array operations like `arr.append(x)` and `arr.delete(index)`
                     if name.endswith(".append") and len(args) == 1:
                         array_name = name.split(".")[0]
                         return ArrayAppend(Variable(array_name), args[0])
@@ -225,32 +298,50 @@ def parse(s: str) -> AST:
                     if name.endswith(".delete") and len(args) == 1:
                         array_name = name.split(".")[0]
                         return ArrayDelete(Variable(array_name), args[0])
-                    
-                    return FunctionCall(name, args)
+
+
+                    # **Check argument count**
+                    if len(args) != len(param_types):
+                        raise TypeError(f"Function '{name}' expects {len(param_types)} arguments, but got {len(args)}")
+
+                    # **Check argument types**
+                    for (expected_type, arg) in zip(param_types, args):
+                        arg_type = infer_type(arg)
+                        if arg_type != expected_type:
+                            raise TypeError(f"Function '{name}' expected argument of type '{expected_type}' but got '{arg_type}'")
+                       
+                    result = FunctionCall(name, args)
+                    result_type = infer_type(result)
+                    if return_type != 'void' and result_type!=return_type:
+                        raise TypeError(f"Function '{name}' expected return type '{return_type}' but got '{result_type}'")
+
+                    return result_type
+
                 case _:
                     return parse_comparator()
         except ParseError as e:
             print(e)
             return None
 
+
     def parse_function():
         try:
             match t.peek(None):
                 case KeywordToken("def"):  # Function return type
                     next(t)
-                    
+
                     match t.peek(None):
                         case VariableToken(name):
                             next(t)
                             if next(t) != ParenthesisToken("("):
                                 raise ParseError("Expected '(' after function name", t.peek())
+
                             params = []
-                            
+
                             while t.peek(None) and not (isinstance(t.peek(None), ParenthesisToken) and t.peek(None).val == ")"):
                                 param_type_token = next(t)
-
                                 if not isinstance(param_type_token, TypeToken):
-                                    raise TypeError("type for function parameter", str(param_type_token))
+                                    raise TypeError("Expected type for function parameter", str(param_type_token))
 
                                 param_type = param_type_token.val
 
@@ -262,13 +353,13 @@ def parse(s: str) -> AST:
                                     param_type += "[]"
 
                                 param_name_token = next(t)
-
                                 if not isinstance(param_name_token, VariableToken):
                                     raise ParseError(f"Expected a variable name, got {param_name_token}", t.peek())
 
                                 param_name = param_name_token.val
-
                                 params.append((param_type, param_name))
+
+                                symbol_table.declare_variable(param_name, param_type)
 
                                 if t.peek(None) == SymbolToken(","):
                                     next(t)
@@ -291,32 +382,34 @@ def parse(s: str) -> AST:
                             else:
                                 return_type = 'void'
 
-                            
                             if next(t) != ParenthesisToken("{"):
                                 raise ParseError("Expected { before function body", t.peek())
-                            
 
                             global inside_function
-                            inside_function=True
+                            inside_function = True
 
-                                # **Store function before parsing the body to allow recursion**
+                            # **Store function in the global symbol table before parsing the body to allow recursion**
+                            symbol_table.functions[name] = (return_type, [ptype for ptype, _ in params])
+
                             function = Function(name, params, return_type, None)
-                            
 
                             function.body = parse_sequence()
-                            
-                            
+
                             if next(t) != ParenthesisToken("}"):
-                               raise ParseError("Expected } after function body", t.peek())
+                                raise ParseError("Expected } after function body", t.peek())
+
+                            inside_function = False
+
                             
-                            inside_function=False
                             return function
-                        
+
                         case _:
-                            raise NameError("function name")
+                            raise NameError("Expected function name")
         except ParseError as e:
             print(e)
             return None
+
+
         
     
     def parse_print():
@@ -495,36 +588,53 @@ def parse(s: str) -> AST:
                         case OperatorToken('='):  # assignment
                             next(t)
                             value = parse_comparator()
+
+                            expected_type = symbol_table.lookup_variable(var_name)
+                            actual_type = infer_type(value)
+
+                            if expected_type != actual_type:
+                                raise TypeError(f"Cannot assign {actual_type} to {expected_type}")
+
                             return Assignment(var_name, value)
+
                         case ParenthesisToken('('):  # Function call
                             t.prepend(VariableToken(var_name))
                             return parse_function_call()
+
                         case ParenthesisToken('['):  # Array access or assignment
                             next(t)
                             index = parse_comparator()
+
                             if next(t) != ParenthesisToken(']'):
                                 raise ParseError("Expected ']' after array index", t.peek())
+
+                            # **💡 Type Checking: Ensure index is an integer**
+                            if infer_type(index) != "int":
+                                raise TypeError("Array index must be an integer")
+
                             if t.peek(None) == OperatorToken('='):
                                 next(t)
                                 value = parse_comparator()
                                 return ArrayAssignment(Variable(var_name), index, value)
                             return ArrayAccess(Variable(var_name), index)
-                            
+
                         case _:
-                            t.prepend(VariableToken(var_name))  # Put back the variable token
+                            t.prepend(VariableToken(var_name))
                             return parse_comparator()
+
                 case _:
                     return parse_declaration()
         except ParseError as e:
             print(e)
             return None
 
+
     def parse_declaration():
         try:
             match t.peek(None):
                 case TypeToken(var_type):
                     if var_type not in datatypes.keys():
-                        raise TypeError("valid type", var_type)
+                        raise NameError("Invalid type", var_type)
                     else:
                         next(t)
                         match t.peek(None):
@@ -536,17 +646,9 @@ def parse(s: str) -> AST:
                                     match t.peek(None):
                                         case OperatorToken('='):
                                             next(t)
-                                            if isinstance(t.peek(None), VariableToken) and t.peek(None).val == "input":
-                                                next(t)  # consume 'input'
-                                                if not isinstance(t.peek(None), ParenthesisToken) or t.peek(None).val != '(':
-                                                    raise ParseError("Expected '(' after input", t.peek())
-                                                next(t)
-                                                if not isinstance(t.peek(None), ParenthesisToken) or t.peek(None).val != ')':
-                                                    raise ParseError("Expected ')' after input", t.peek())
-                                                next(t) 
-                                                return Declaration(var_type, var_name, Input(var_type))
-                                            value = parse_comparator()
-                                            # **FIX: Ensure arr[0] is parsed as ArrayAccess**
+                                            value = parse_function_call()
+
+                                            # Check if value is an array access
                                             if isinstance(value, Variable) and t.peek(None) == ParenthesisToken('['):
                                                 next(t)
                                                 index = parse_comparator()
@@ -554,7 +656,14 @@ def parse(s: str) -> AST:
                                                     raise ParseError("Expected ']' after array index", t.peek())
                                                 value = ArrayAccess(value, index)  # Convert to ArrayAccess node
 
+                                            # **💡 Type Checking: Ensure value type matches declared type**
+                                            value_type = infer_type(value)
+                                            if value_type != var_type:
+                                                raise TypeError(f"Cannot assign {value_type} to {var_type}")
+
+                                            symbol_table.declare_variable(var_name, var_type)
                                             return Declaration(var_type, var_name, value)
+
                                         case ParenthesisToken('['):  # Array declaration
                                             next(t)
                                             elements = []
@@ -566,30 +675,19 @@ def parse(s: str) -> AST:
                                                     break
                                             if next(t) != ParenthesisToken("]"):
                                                 raise ParseError("Expected ']' after array elements", t.peek())
+
+                                            # **💡 Type Checking: Ensure all array elements match var_type**
+                                            element_types = {infer_type(e) for e in elements}
+                                            if len(element_types) > 1 or var_type not in element_types:
+                                                raise TypeError(f"Array elements must be of type {var_type}")
+
+                                            symbol_table.declare_variable(var_name, var_type + "[]")
                                             return Declaration(var_type + "[]", var_name, Array(elements))
+
                                         case _:
                                             raise ParseError("Expected '=' or '[' after variable name", t.peek())
-                            case ParenthesisToken('['):  # Array type
-                                next(t)
-                                if next(t) != ParenthesisToken(']'):
-                                    raise ParseError("Expected ']' after '[' in array type", t.peek())
-                                match t.peek(None):
-                                    case VariableToken(var_name):
-                                        if var_name in keywords:
-                                            raise InvalidVariableNameError(var_name)
-                                        else:
-                                            next(t)
-                                            match t.peek(None):
-                                                case OperatorToken('='):
-                                                    next(t)
-                                                    value = parse_comparator()
-                                                    return Declaration(var_type + "[]", var_name, value)
-                                                case _:
-                                                    raise ParseError("Expected '=' after array variable name", t.peek())
-                                    case _:
-                                        raise ParseError("Expected variable name after array type", t.peek())
                             case _:
-                                raise ParseError("Expected variable name or '[' after type", t.peek())
+                                raise ParseError("Expected variable name after type", t.peek())
                 case _:
                     return parse_comparator()
         except ParseError as e:

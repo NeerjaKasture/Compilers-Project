@@ -1,4 +1,3 @@
-from keywords import *
 from lexer import *
 from parser import *
 from errors import *
@@ -9,7 +8,7 @@ def is_array_type(type_str: str) -> bool:
 def get_base_type(type_str: str) -> str:
     return type_str[:-2] if is_array_type(type_str) else type_str
 
-MAX_RECURSION_DEPTH = 1000
+MAX_RECURSION_DEPTH = 100
 def e(tree: AST, env={}, types={}, call_stack=[]):
 
     match tree:
@@ -23,6 +22,11 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
                         return float(user_input)
                     case "string":
                         return str(user_input)
+                    case "bool":
+                        if user_input.lower() == "true":
+                            return True
+                        elif user_input.lower() == "false":
+                            return False
                     case _:
                         raise TypeError(f"Unsupported input type: {inp_type}")
             except ValueError as ve:
@@ -93,7 +97,7 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
         case Boolean(v):
             if v == "true":
                 return True 
-            else:
+            elif v=="false":
                 return False
         case Parenthesis(expr):
             return e(expr)
@@ -137,6 +141,10 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
                     return e(l) == e(r)
                 case "!=":
                     return e(l) != e(r)
+                case "<=":
+                    return e(l) <= e(r)
+                case ">=":
+                    return e(l) >= e(r)
         case Cond(If, Elif, Else):
             if e(If[0]):
                 
@@ -259,7 +267,7 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
             for value in values:
                 result = e(value, env, types)
                 if isinstance(result, bool): 
-                    result = "true" if result else "false"
+                    result = "nocap" if result else "cap"
                 results.append(result)
             # print(*results)  # This will print the values
             print("".join(map(str, results))) # this will print the values without adding extra space while printing
