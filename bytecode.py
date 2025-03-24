@@ -29,7 +29,7 @@ class Opcode(Enum):
     DUP = 0x18        # Duplicate top of stack
     INPUT = 0x19      # System call: Read user input
     EXIT = 0x1A       # End execution (replaces HALT)
-
+    LOAD = 0x1B
 class AssemblyGenerator:
     def __init__(self):
         self.instructions = []
@@ -40,8 +40,11 @@ class AssemblyGenerator:
     def emit(self, instruction, *args):
         """Generate a formatted assembly instruction."""
         args_str = " ".join(map(str, args)) if args else ""
-        self.instructions.append(f"{self.instruction_counter}: {instruction.name:<10} {args_str}")
-        self.instruction_counter += 1
+        if isinstance(instruction, str):  # Handle labels
+            self.instructions.append(f"{instruction}:")
+        else:
+            self.instructions.append(f"{self.instruction_counter}: {instruction.name:<10} {args_str}")
+            self.instruction_counter += 1
 
     def generate_label(self):
         """Generate a unique label for jumps"""
@@ -68,38 +71,94 @@ class AssemblyGenerator:
         """Convert AST expressions into bytecode"""
         if isinstance(expr, Number):
             self.emit(Opcode.PUSH, expr.val)
-
+        elif isinstance(expr, String):
+            self.emit(Opcode.PUSH, expr.val)
+        elif isinstance(expr, Boolean):
+            self.emit(Opcode.PUSH, expr.val)
         elif isinstance(expr, Variable):
             var_loc = self.get_var_location(expr.val)
-            self.emit(Opcode.PUSH, var_loc)
+            self.emit(Opcode.LOAD, var_loc)
         elif isinstance(expr, Parenthesis):
             self.generate_expression(expr.expr)
         elif isinstance(expr, BinOp):
-            self.generate_expression(expr.left)
-            self.generate_expression(expr.right)
-
             op_map = {
                 "+": Opcode.ADD, "-": Opcode.SUB, "*": Opcode.MUL, "/": Opcode.DIV, "^": Opcode.POW,
                 "<": Opcode.CMP_LT, ">": Opcode.CMP_GT, "==": Opcode.CMP_EQ, "!=": Opcode.CMP_NEQ,
             }
 
-            if expr.op in op_map:
-                self.emit(op_map[expr.op])
-
+            if expr.op == "and":
+                # Generate code for the left operand
+                self.generate_expression(expr.left)
+                
+                # Create a label to jump to if the left operand is false
+                end_label = self.generate_label()
+                
+                # Duplicate the top value for the conditional jump
+                self.emit(Opcode.DUP)
+                
+                # If the left operand is false (0), skip the right operand
+                self.emit(Opcode.JZ, end_label)
+                
+                # Pop the duplicated value
+                self.emit(Opcode.POP)
+                
+                # Generate code for the right operand
+                self.generate_expression(expr.right)
+                
+                # Mark the end label
+                self.emit(f"{end_label}:")
+            
+            elif expr.op == "or":
+                # Generate code for the left operand
+                self.generate_expression(expr.left)
+                
+                # Create a label to jump to if the left operand is true
+                end_label = self.generate_label()
+                
+                # Duplicate the top value for the conditional jump
+                self.emit(Opcode.DUP)
+                
+                # If the left operand is true (non-zero), skip the right operand
+                self.emit(Opcode.JNZ, end_label)
+                
+                # Pop the duplicated value
+                self.emit(Opcode.POP)
+                
+                # Generate code for the right operand
+                self.generate_expression(expr.right)
+                
+                # Mark the end label
+                self.emit(f"{end_label}:")
+            
             elif expr.op == "<=":
+                self.generate_expression(expr.left)
+                self.generate_expression(expr.right)
                 self.emit(Opcode.CMP_GT)  # a <= b → !(a > b)
-                self.emit(Opcode.LNOT)  
-
+                self.emit(Opcode.LNOT)
+            
             elif expr.op == ">=":
+                self.generate_expression(expr.left)
+                self.generate_expression(expr.right)
                 self.emit(Opcode.CMP_LT)  # a >= b → !(a < b)
                 self.emit(Opcode.LNOT)
-
+            
+            elif expr.op in op_map:
+                self.generate_expression(expr.left)
+                self.generate_expression(expr.right)
+                self.emit(op_map[expr.op])
+            
             else:
                 raise KeyError(f"Unsupported operator: '{expr.op}'")
 
 
+
     def generate_statement(self, stmt):
         """Convert AST statements into bytecode"""
+        if isinstance(stmt, Sequence):
+            for sub_stmt in stmt.statements:
+                self.generate_statement(sub_stmt )
+        if isinstance(stmt, Declaration):
+            self.generate_declaration(stmt)
         if isinstance(stmt, Assignment):
             var_loc = self.get_var_location(stmt.name)
             self.generate_expression(stmt.value)  # ✅ Use `generate_expression()`
@@ -142,21 +201,42 @@ class AssemblyGenerator:
 
 
     def generate_if(self, stmt):
-        """Generate assembly for if-else statement"""
-        else_label = self.generate_label()
-        end_label = self.generate_label()
-
+        """Generate assembly for if-else statement with multiple elif support"""
+        end_label = self.generate_label()  # Label for the end of the entire if-structure
+        
+        # Generate code for the initial 'if' condition and body
         self.generate_expression(stmt.If[0])
-        self.emit(Opcode.JZ, else_label)
-
+        first_elif_or_else_label = self.generate_label()
+        self.emit(Opcode.JZ, first_elif_or_else_label)  # Jump to next condition if false
+        
         self.generate_statement(stmt.If[1])
-        self.emit(Opcode.JMP, end_label)
-
-        self.emit(f"{else_label}:")
+        self.emit(Opcode.JMP, end_label)  # Skip all remaining conditions after executing body
+        
+        self.emit(f"{first_elif_or_else_label}:")
+        
+        # Generate code for each 'elif' condition and body
+        if stmt.Elif:
+            for i, (elif_cond, elif_body) in enumerate(stmt.Elif):
+                self.generate_expression(elif_cond)
+                
+                # If this is the last elif and there's no else, jump to end if false
+                # Otherwise, jump to the next elif or else
+                next_label = end_label if i == len(stmt.Elif) - 1 and not stmt.Else else self.generate_label()
+                
+                self.emit(Opcode.JZ, next_label)  # Jump to next condition if false
+                self.generate_statement(elif_body)
+                self.emit(Opcode.JMP, end_label)  # Skip to end after executing body
+                
+                if next_label != end_label:
+                    self.emit(f"{next_label}:")
+        
+        # Generate code for the 'else' body if it exists
         if stmt.Else:
             self.generate_statement(stmt.Else)
-
+        
+        # This is where execution continues after the if-elif-else structure
         self.emit(f"{end_label}:")
+
 
     def generate_while(self, stmt):
         """Generate assembly for while loops"""
@@ -190,7 +270,12 @@ class AssemblyGenerator:
 
         self.emit(f"{end_label}:")
 
-    
+    def generate_declaration(self, decl):
+        """Convert AST variable declarations into bytecode"""
+        var_loc = self.get_var_location(decl.name)
+        self.generate_expression(decl.value)  # ✅ Generate value expression
+        self.emit(Opcode.STORE, var_loc)
+
     def print_assembly(self):
         """Print generated assembly code"""
         for line in self.instructions:

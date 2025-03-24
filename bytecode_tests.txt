@@ -1,3 +1,4 @@
+###########################Arithmetic and print
 print(3*5+2);
 print(7^4^2);
 print(2.5^2);
@@ -7,3 +8,48 @@ print((2+3)>4);
 print(6/3*2);
 print(2/3-4*5/2);
 print(2+3-4*5/2);
+
+######################if elif else
+if (2 < 3){ 
+    print("Yes");} 
+    else {
+       print("no");};
+
+#####
+int num = 5;
+if (num > 0) {
+    print("Positive number");
+} elif (num < 0) {
+    print("Negative number");
+} else {
+    print("Zero");
+}
+#######
+int y=3;
+bool z=true;
+if ((y > 2.5) and (z == true)) { 
+    print("Complex condition true"); 
+} else { 
+    print("Complex condition false"); 
+}
+int f=7; #for more code after if-else
+
+#################################variables
+int x = 5;
+float y = 2.5;
+
+int x=10;
+x=x+1;
+print(x);
+
+#####################################while loops
+int count = 0;
+while (count < 5) {
+    print("Count is:", count);
+    count = count + 1;
+}
+
+#########################for loops
+for (int i = 0; i < 5; i = i + 1) {
+    print("Iteration:", i);
+}
