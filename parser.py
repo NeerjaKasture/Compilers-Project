@@ -629,6 +629,15 @@ def parse(s: str) -> AST:
                         elif op in {"not"}:
                             next(t)
                             ast = BinOp(op, ast, parse_add())
+                        elif op == "&":  # Bitwise AND
+                            next(t)
+                            ast = BinOp("&", ast, parse_add())
+                        elif op == "|":  # Bitwise OR
+                            next(t)
+                            ast = BinOp("|", ast, parse_add())
+                        elif op == "~~":  # Bitwise NOT (unary)
+                            next(t)
+                            ast = BinOp("~~", None, parse_add())  # Unary operator
                         else:
                             raise InvalidOperationError(str(op), "comparison")
                     case _:
@@ -730,6 +739,9 @@ def parse(s: str) -> AST:
                                     raise ParseError("Expected ',' after first concat argument", t.peek())
                         case _:
                             raise ParseError("Expected '(' after 'concat'", t.peek())
+                case OperatorToken('~~'):
+                    next(t)
+                    return BinOp("~~", None, parse_atom())
                 case OperatorToken('~'):  # Check for the tilde operator
                     next(t)
                     return BinOp('*', Number('-1'), parse_atom())

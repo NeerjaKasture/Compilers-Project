@@ -171,7 +171,7 @@ int count=0;
 while (count < 10) {
     print("Count is:", count);
     if(count==3){
-      continue;   
+      # continue;   
     }
     count = count + 1;
 }
@@ -301,3 +301,8 @@ for (int i = 0; i < 4; i = i + 1) {
     print("Element:", newArr[i]);  # Expected Output: 0, 1, 2, 3
 }
 
+print("===== Bitwise &, |, ~~ =====");
+
+print(5&3);
+print(5|3);
+print(~~3);
