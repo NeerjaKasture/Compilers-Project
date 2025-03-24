@@ -142,7 +142,7 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
                 case "|":  # Bitwise OR
                     return e(l) | e(r)
                 case "~~":  # Bitwise NOT (unary)
-                    return not e(r)  # Only use `left`, `right` is None
+                    return ~e(r)  # Only use `left`, `right` is None
         case Cond(If, Elif, Else):
             if e(If[0]):
                 
