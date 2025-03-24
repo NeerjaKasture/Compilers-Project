@@ -108,7 +108,7 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
                 return int(v)
         case BinOp(op, l, r):
             if isinstance(e(l), bool) or isinstance(e(r), bool):
-                if op in {"+", "-", "*", "/", "^","<",">","<=",">="}:
+                if op in {"+", "-", "*", "/", "^","<",">","<=",">=","&","|","~~"}:
                     raise TypeError(f"Cannot apply '{op}' to Boolean type")
                 match op:
                     case "and":
@@ -118,7 +118,7 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
                     case "not":
                         return not e(l)
             if isinstance(e(l), str) or isinstance(e(r), str):
-                if op in {"+", "-", "*", "/", "^","<",">","<=",">="}:
+                if op in {"+", "-", "*", "/", "^","<",">","<=",">=","&","|","~~"}:
                     raise TypeError(f"Cannot apply '{op}' to String type")  
             match op:
                 case "+":
@@ -145,6 +145,12 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
                     return e(l) <= e(r)
                 case ">=":
                     return e(l) >= e(r)
+                case "&":  # Bitwise AND
+                    return e(l) & e(r)
+                case "|":  # Bitwise OR
+                    return e(l) | e(r)
+                case "~~":  # Bitwise NOT (unary)
+                    return not e(r)  # Only use `left`, `right` is None
         case Cond(If, Elif, Else):
             if e(If[0]):
                 
@@ -175,7 +181,7 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
                 if not all(isinstance(x, base_type) for x in val):
                     raise TypeError(f"All elements in array '{var_name}' must be of type {get_base_type(var_type)}")
             elif not isinstance(val, datatypes[var_type]):
-                \
+                
                 raise TypeError(f"Variable '{var_name}' must be of type {var_type}")
 
             env[var_name] = val
@@ -203,14 +209,21 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
                 if isinstance(body, Sequence):
                     for stmt in body.statements:
                         result = e(stmt, env, types)
-
-                        if isinstance(result,Return):
+                        if result == "break":
+                            return None 
+                        elif result == "continue":
+                            break 
+                        elif isinstance(result,Return):
                             return result
                         elif isinstance(stmt, Return):
                             # If return is encountered, stop execution
                             return stmt 
                 else:
                     result = e(body, env, types)
+                    if result == "break":
+                        return None  
+                    if result == "continue":
+                        continue 
                     if isinstance(result,Return):
                         return result
                     elif isinstance(stmt, Return):
@@ -218,40 +231,52 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
                         return stmt 
             return None
         
+        
+        
         case For(init, condition, increment, body):
             xy = None
-            e(init, env, types)  # Execute initialization (e.g., i = 0)
-            while e(condition, env, types):  # Check loop condition
+            e(init, env, types)  
+            while e(condition, env, types): 
                 if isinstance(body, Sequence):
                     for stmt in body.statements:
-                        xy = e(stmt, env, types)  # Execute loop body
-                        
-                        if isinstance(xy,Return):
+                        xy = e(stmt, env, types) 
+                        if xy == "break":
+                            return None  
+                        elif xy == "continue":
+                            break 
+                        elif isinstance(xy,Return):
                             return xy
                         elif isinstance(stmt, Return):
                             return stmt 
                 else:
                     xy = e(body, env, types)
-                    
-                    if isinstance(xy,Return):
+                    if xy == "break":
+                            return None  
+                    elif xy == "continue":
+                            continue 
+                    elif isinstance(xy,Return):
                             return xy
                     elif isinstance(stmt, Return):
                         return stmt 
-                e(increment, env, types)  # Execute increment (e.g., i = i + 1)
+                e(increment, env, types)
             return xy
 
         case Sequence(statements):
             last_value = []
             for stmt in statements:
-                last_value=e(stmt, env, types,call_stack)  # Evaluate each statement
+                last_value=e(stmt, env, types,call_stack)  
                 if isinstance(last_value,Return):
                     return last_value
                 elif isinstance(stmt, Return):
-                      # If return is encountered, stop execution
                     return stmt  
                 
             return last_value
-        
+        case Break():
+            return "break"
+
+        case Continue():
+            return "continue"
+
         case String(v):
             return v
         case Concat(left, right):

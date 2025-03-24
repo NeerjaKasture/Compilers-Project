@@ -6,3 +6,4 @@ int x = 5;
 print(changeVar(x));  # Expected: 15
 print(x);             # Expected: 5 (Global x should remain unchanged)
 
+print(5&3);

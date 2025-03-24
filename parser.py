@@ -55,6 +55,13 @@ class SemicolonToken(AST):
     s: str
 
 @dataclass
+class Break(AST):
+    pass
+
+@dataclass
+class Continue(AST):
+    pass
+@dataclass
 class Boolean(AST):
     val: str
 
@@ -573,6 +580,17 @@ def parse(s: str) -> AST:
                             return While(condition, body)
                         case _:
                             raise ParseError("Expected '{' after while condition", t.peek())
+                case KeywordToken('break'):
+                    next(t)  # Consume 'break'
+                    if t.peek(None) != SymbolToken(';'):
+                        raise ParseError("Expected ';' after 'break'", t.peek())
+                    return Break()
+
+                case KeywordToken('continue'):
+                    next(t)  # Consume 'continue'
+                    if t.peek(None) != SymbolToken(';'):
+                        raise ParseError("Expected ';' after 'continue'", t.peek())
+                    return Continue()
                 case _:
                     return parse_assignment()
         except ParseError as e:
@@ -709,6 +727,15 @@ def parse(s: str) -> AST:
                         elif op in {"not"}:
                             next(t)
                             ast = BinOp(op, ast, parse_add())
+                        elif op == "&":  # Bitwise AND
+                            next(t)
+                            ast = BinOp("&", ast, parse_add())
+                        elif op == "|":  # Bitwise OR
+                            next(t)
+                            ast = BinOp("|", ast, parse_add())
+                        elif op == "~~":  # Bitwise NOT (unary)
+                            next(t)
+                            ast = BinOp("~~", None, parse_add())  # Unary operator
                         else:
                             raise InvalidOperationError(str(op), "comparison")
                     case _:
@@ -810,6 +837,9 @@ def parse(s: str) -> AST:
                                     raise ParseError("Expected ',' after first concat argument", t.peek())
                         case _:
                             raise ParseError("Expected '(' after 'concat'", t.peek())
+                case OperatorToken('~~'):
+                    next(t)
+                    return BinOp("~~", None, parse_atom())
                 case OperatorToken('~'):  # Check for the tilde operator
                     next(t)
                     return BinOp('*', Number('-1'), parse_atom())
