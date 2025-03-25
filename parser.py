@@ -660,12 +660,26 @@ def parse(s: str) -> AST:
 
     def parse_sub():
         try:
-            ast = parse_mul()
+            ast = parse_mod()
             while True:
                 match t.peek(None):
                     case OperatorToken('-'):
                         next(t)
-                        ast = BinOp('-', ast, parse_mul())
+                        ast = BinOp('-', ast, parse_mod())
+                    case _:
+                        return ast
+        except ParseError as e:
+            print(e)
+            return None
+
+    def parse_mod():
+        try:
+            ast = parse_mul()
+            while True:
+                match t.peek(None):
+                    case OperatorToken('%'):
+                        next(t)
+                        ast = BinOp('%', ast, parse_mul())
                     case _:
                         return ast
         except ParseError as e:

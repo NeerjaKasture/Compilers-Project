@@ -1,3 +1,15 @@
-for (int i = 0; i < 5; i = i + 1) {
-    print("Iteration:", i);
+print("===== Project Euler Tests =====");
+
+print("===== Problem 1: Multiples of 3 and 5 =====");
+def sumMultiples(int limit) -> int {
+    int sum = 0;
+    print(limit);
+    for (int i = 0; i < limit; i = i + 1) {
+        if (i % 3 == 0 or i % 5 == 0) {
+            sum = sum + i;
+        }
+    }
+    return sum
 }
+print(sumMultiples(10));   # Expected Output: 23
+print(sumMultiples(1000)); # Expected Output: 233168

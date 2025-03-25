@@ -104,7 +104,7 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
                 return int(v)
         case BinOp(op, l, r):
             if isinstance(e(l), bool) or isinstance(e(r), bool):
-                if op in {"+", "-", "*", "/", "^","<",">","<=",">=","&","|","~~"}:
+                if op in {"+", "-", "*", "/", "%", "^","<",">","<=",">=","&","|","~~"}:
                     raise TypeError(f"Cannot apply '{op}' to Boolean type")
                 match op:
                     case "and":
@@ -114,7 +114,7 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
                     case "not":
                         return not e(l)
             if isinstance(e(l), str) or isinstance(e(r), str):
-                if op in {"+", "-", "*", "/", "^","<",">","<=",">=","&","|","~~"}:
+                if op in {"+", "-", "*", "/", "%", "^","<",">","<=",">=","&","|","~~"}:
                     raise TypeError(f"Cannot apply '{op}' to String type")  
             match op:
                 case "+":
@@ -127,6 +127,10 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
                     if e(r) == 0:
                         raise ZeroDivisionError("Division by zero")
                     return e(l) / e(r)
+                case  "%":
+                    if e(r) == 0:
+                        raise ZeroDivisionError("Division by zero")
+                    return e(l) % e(r)
                 case "^":
                     return e(l) ** e(r)
                 case "<":
