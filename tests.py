@@ -1,5 +1,6 @@
 import ast
-from parser import e, parse
+from parser import parse
+from evaluator import e  
 
 def read_test_cases(file_path):
     test_cases = []
@@ -7,8 +8,8 @@ def read_test_cases(file_path):
         for line_number, line in enumerate(f, start=1):
             line = line.strip()
             if not line or '|' not in line:
-                print(f"Invalid line {line_number} in {file_path}: {line}")
-                exit(1)
+                print(f"Error in line {line_number} in {file_path}: {line}")
+                continue  # Skip to the next line instead of exiting
 
             expression, expected_result = line.split('|', 1)
             expression = expression.strip()
@@ -26,8 +27,8 @@ def read_test_cases(file_path):
                     if not isinstance(expected_result, list):
                         raise ValueError  # Ensure it's actually a list
                 except (SyntaxError, ValueError):
-                    print(f"Invalid list format on line {line_number} in {file_path}: {line}")
-                    exit(1)
+                    print(f"Error in line {line_number} in {file_path}: {line}")
+                    continue  
             else:
                 try:
                     float_value = float(expected_result)
@@ -37,8 +38,8 @@ def read_test_cases(file_path):
                         expected_result = int(float_value)
                 except ValueError:
                     if expected_result.lower() != "error":  # Allow only "error" as a string
-                        print(f"Invalid line {line_number} in {file_path}: {line}")
-                        exit(1)
+                        print(f"Error in line {line_number} in {file_path}: {line}")
+                        continue  
 
             test_cases.append((expression, expected_result))
 
@@ -46,40 +47,40 @@ def read_test_cases(file_path):
 
 
 def run_tests(test_cases):
-    for expression, expected in test_cases:
+    for line_number, (expression, expected) in enumerate(test_cases, start=1):
         try:
             result = e(parse(expression))
 
             if expected == "error":
-                print(f"Test failed: {expression} => Expected an error, but got {result}")
+                print(f"Test failed in line {line_number}: {expression} => Expected an error, but got {result}")
                 return
 
             # Ensure type match between result and expected
             if type(result) != type(expected):
-                print(f"Test failed: {expression} => Expected {expected} ({type(expected).__name__}), but got {result} ({type(result).__name__})")
+                print(f"Test failed in line {line_number}: {expression} => Expected {expected} ({type(expected).__name__}), but got {result} ({type(result).__name__})")
                 return
 
             # If numeric, allow small floating-point errors
             if isinstance(expected, (int, float)) and abs(result - expected) > 1e-9:
-                print(f"Test failed: {expression} => Expected {expected}, but got {result}")
+                print(f"Test failed in line {line_number}: {expression} => Expected {expected}, but got {result}")
                 return
 
             # Handle lists comparison
             if isinstance(expected, list):
                 if result != expected:
-                    print(f"Test failed: {expression} => Expected {expected}, but got {result}")
+                    print(f"Test failed in line {line_number}: {expression} => Expected {expected}, but got {result}")
                     return
 
             # Non-numeric results (bool) must match exactly
             if isinstance(expected, bool) and result != expected:
-                print(f"Test failed: {expression} => Expected {expected}, but got {result}")
+                print(f"Test failed in line {line_number}: {expression} => Expected {expected}, but got {result}")
                 return
 
         except Exception as error:
             if expected == "error":
                 continue  # Move to the next test case
             else:
-                print(f"Error in expression {expression}: {error}")
+                print(f"Error in line {line_number} for expression {expression}: {error}")
                 return
 
     print("All test cases passed")
