@@ -619,14 +619,15 @@ def parse(s: str) -> AST:
             ast = parse_add()
             while True:
                 match t.peek(None):
+                    
                     case OperatorToken(op):
-                        if op in {"<", ">", "<=", ">=", "==", "!="}:  # added <=, >= and !=
-                            next(t)
-                            ast = BinOp(op, ast, parse_add())
-                        elif op in {"and", "or"}:
+                        if op in {"and", "or"}:  # added <=, >= and !=
                             next(t)
                             ast = BinOp(op, ast, parse_add())
                         elif op in {"not"}:
+                            next(t)
+                            ast = BinOp(op, None, parse_add())
+                        elif op in {"<", ">", "<=", ">=", "==", "!="}:
                             next(t)
                             ast = BinOp(op, ast, parse_add())
                         elif op == "&":  # Bitwise AND
@@ -739,6 +740,9 @@ def parse(s: str) -> AST:
                                     raise ParseError("Expected ',' after first concat argument", t.peek())
                         case _:
                             raise ParseError("Expected '(' after 'concat'", t.peek())
+                case OperatorToken('not'):
+                    next(t)
+                    return BinOp('not', None, parse_atom())
                 case OperatorToken('~~'):
                     next(t)
                     return BinOp("~~", None, parse_atom())

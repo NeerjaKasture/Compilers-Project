@@ -2,6 +2,7 @@ import sys
 from lexer import lex
 from parser import parse
 from evaluator import e
+from typechecker import TypeChecker
 
 if len(sys.argv) != 2:
     print("Usage: python compiler.py <filename>")
@@ -17,10 +18,9 @@ except FileNotFoundError:
     sys.exit(1)
 
 ast = parse(code)
+print(ast)
+checker = TypeChecker()
+checker.visit(ast)
 
 result = e(ast)
 result
-
-
-
-

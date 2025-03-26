@@ -49,7 +49,7 @@ if (msg == "Hello") {
 }
 
 yap("test_no_5");
-if (x > 0 and y < 5.0 or z == nocap) {
+if ((x > 0) and (y < 5.0) or (z == nocap)) {
     yap("Multiple conditions met");
     yap(x);
     yap(y);
@@ -95,7 +95,7 @@ if (a > b) {
 
 yap("test_no_2");
 if (x > 0) {
-    if (y > 2.0 and z == nocap) {
+    if ((y > 2.0) and (z == nocap)) {
         yap("Complex nested condition 1");
         if (msg == "Hello") {
             yap("Deepest nesting");
@@ -118,7 +118,7 @@ for (int i = 0; i < 5; i = i + 1) {
 }
 
 yap("test_no_2");
-for (int j = 10; j > 0 and x < 10; j = j - 2) {
+for (int j = 10; (j > 0) and (x < 10); j = j - 2) {
     yap("Count down:", j);
     x = x + 1;
 }
@@ -300,6 +300,71 @@ int[] newArr = createArray(4);
 for (int i = 0; i < 4; i = i + 1) {
     yap("Element:", newArr[i]);  # Expected Output: 0, 1, 2, 3
 }
+
+yap("test_no_10");
+def add(int a, int b) -> int {
+    yeet a + b
+}
+def multiply(int x, int y) -> int {
+    yeet x * y
+}
+yap(multiply(add(2, 3), 4)); 
+
+yap("test_no_11");
+def multiply(int x, int y) -> int {
+    yeet x * y
+}
+
+def square(int x) -> int {
+    yeet multiply(x, x)
+}
+
+yap(square(5)); 
+
+yap("test_no_12");
+def changeVar(int x) -> int {
+    x = x + 10;
+    yeet x
+}
+int x = 5;
+yap(changeVar(x));  # Expected: 15
+yap(x); 
+
+yap("test_no_13");
+def check(int x)-> int{
+    for(int i=x;i<10;i=i+1){
+        yap(i);
+        if(i==5){
+            yeet 55
+        }
+      
+    }
+    yeet 0
+}
+yap(check(2));
+
+yap("test_no_14");
+def check(int x) -> string {
+    if (x > 0) {
+        yeet "Positive"
+    }
+    yeet "Non-positive"
+}
+yap(check(5));   
+yap(check(~2));
+
+yap("test_no_15");
+
+def fib(int n) -> int{
+    if((n==1) or (n==0) ){
+        yeet n
+    }
+    
+    int x = fib(n-1) + fib(n-2);
+    yeet x
+}
+
+yap(fib(8));
 
 yap("===== Bitwise &, |, ~~ =====");
 

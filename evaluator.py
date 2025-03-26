@@ -112,7 +112,7 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
                     case "or":
                         return e(l) or e(r)
                     case "not":
-                        return not e(l)
+                        return not e(r)
             if isinstance(e(l), str) or isinstance(e(r), str):
                 if op in {"+", "-", "*", "/", "^","<",">","<=",">=","&","|","~~"}:
                     raise TypeError(f"Cannot apply '{op}' to String type")  
