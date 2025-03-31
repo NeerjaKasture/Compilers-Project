@@ -118,7 +118,11 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
                     raise TypeError(f"Cannot apply '{op}' to String type")  
             match op:
                 case "+":
-                    return e(l) + e(r)
+                    left_val = e(l)
+                    right_val = e(r)
+                    if not (isinstance(left_val, (int, float)) and isinstance(right_val, (int, float))):
+                        raise TypeError("Addition (+) is only supported between numbers (int/float)")
+                    return left_val + right_val
                 case "-":
                     return e(l) - e(r)
                 case "*":

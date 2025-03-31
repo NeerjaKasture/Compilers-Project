@@ -21,6 +21,11 @@ class Sequence(AST):
     def __init__(self, statements):
         self.statements = statements
 
+    def __eq__(self, other):
+        if not isinstance(other, Sequence):
+            return False
+        return self.statements == other.statements
+
     def __repr__(self):
         return f"Sequence({self.statements})"
 
@@ -197,7 +202,7 @@ def parse(s: str) -> AST:
                     if isinstance(t.peek(None), SymbolToken) and t.peek(None).val == ";":
                         next(t)   
                     else:
-                        raise ParseError("Expected ';' after statement", t.peek())
+                        raise ParseError("Expected ';' after statement", t.peek(None))
 
             except ParseError as e:
                 print(e)
