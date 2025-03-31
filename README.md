@@ -151,6 +151,8 @@ Value of x: 10
 ```
 
 For more details on writing YAP code, refer to the [User Guide](./user_guide.md).
+### Happy Coding!
+
 
 # Coverage
 
@@ -166,7 +168,6 @@ The current test suite `testing.yap` gives **x% line coverage** and **y% branch 
 - **Srijahnavi** - `yap` statement for all data types, Arrays, Errors, Test cases
 
 Other than this, everybody has worked on testing newly implemented parts and making changes according to errors irrespective of the distribution mentioned above.
-
 
 
 
