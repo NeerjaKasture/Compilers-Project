@@ -1,5 +1,0 @@
-def func(int x) -> int {
-    return x;
-}
-
-print(func(1))

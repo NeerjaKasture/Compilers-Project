@@ -97,7 +97,7 @@ def lex(s: str) -> Iterator[Token]:
 
         else:
             match s[i]:
-                case '+' | '*' | '-' | '/' | '^' | '(' | ')' | '<' | '>' | '=' | '!' | '~' | '{' | '}' | ';' | ',' | '[' | ']' | '->'|'%':
+                case '+' | '*' | '-' | '/' | '%' | '^' | '(' | ')' | '<' | '>' | '=' | '!' | '~' | '{' | '}' | ';' | ',' | '[' | ']' | '->'|'%':
                     if i + 1 < len(s):
                         two_char_op = s[i:i + 2]
                         if two_char_op in {"<=", ">=", "==", "!=","~~"}:  # Explicitly handle <=, >=
@@ -109,7 +109,7 @@ def lex(s: str) -> Iterator[Token]:
                     elif s[i] == '-' and i + 1 < len(s) and s[i + 1] == '>':
                         yield SymbolToken('->')
                         i += 2
-                    elif s[i] in '+ * - / ^ ~><=':
+                    elif s[i] in '+ * - / % ^ ~><=':
                         yield OperatorToken(s[i])
                     else:
                         yield SymbolToken(s[i])
