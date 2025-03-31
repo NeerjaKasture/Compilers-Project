@@ -33,6 +33,7 @@ Compilers-Project
 - Logical: `and`, `or`, `not`
 - Comparison: `==`, `!=`, `>`, `<`, `>=`, `<=`
 - Unary: `~` (negation)
+- Bitwise: `&`, `|`,`~~`
 
 ### Control Structures
 - Conditionals: `if-elif-else`
@@ -53,7 +54,7 @@ Compilers-Project
 ## Additional Features
 - **Function Scope Handling**: Supports function calls with argument passing
 - **Array Operations**: Array creation, indexing, length, appending, and deletion
-- **String Concatenation**: Using `concat()`
+
 
 # Design Choices
 
@@ -161,7 +162,7 @@ The current test suite `testing.yap` gives **x% line coverage** and **y% branch 
 
 # Work Distribution
 
-- **Neerja** - Variables, Functions and Recursion, Strings, Euler problems
+- **Neerja** - Variables, Functions and Recursion, Strings, static typechecking, Euler problems
 - **Anura** - Loops, Recursion, bytecode and checking, Arithmetic, if-elif-else, Blocks
 - **Saloni** - Arrays, functions to support arrays, logical operations (bitwise), testing files, coverage calculations
 - **Siri** - Input statements for the data types, Types of Errors, Test cases, stacks
