@@ -201,7 +201,7 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
                 if not all(isinstance(x, base_type) for x in val):
                     raise TypeError(f"All elements in array '{var_name}' must be of type {get_base_type(var_type)}")
             elif not isinstance(val, datatypes[var_type]):
-                \
+                
                 raise TypeError(f"Variable '{var_name}' must be of type {var_type}")
 
             local_env[var_name] = val
@@ -330,7 +330,6 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
         case ArrayAccess(array, index):
             array_val = e(array, env, types)
             index_val = e(index, env, types)
-            print(array_val,index_val)
             if not isinstance(array_val, (list,str)):
                 raise TypeError("Only arrays and strings can be indexed")
             return array_val[index_val]
@@ -338,8 +337,9 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
             array_val = e(array, env, types)
             index_val = e(index, env, types)
             value_val = e(value, env, types)
-            if not isinstance(array_val, list):
+            if not isinstance(array_val, (list,str)):
                 raise TypeError("Array assignment can only be used with arrays")
+            
             array_val[index_val] = value_val
             return value_val
         case ArrayAppend(array, value):

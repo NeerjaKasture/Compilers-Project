@@ -217,7 +217,7 @@ class TypeChecker:
             case "ArrayAssignment":
                 array_type = self.visit(node.array)
                 
-                if "[]" not in array_type:
+                if "[]" not in array_type and array_type!="string":
                     raise TypeError(f"Cannot assign to non-array type {array_type}")
 
                 element_type = array_type.replace("[]", "")
