@@ -183,7 +183,7 @@ int[] numbers = [1, 2, 3, 4];
 string[] words = ["hello", "world"];
 ```
 
-###Access array elements: 
+### Access array elements: 
 ```yap
 yap(numbers[2]);
 ```
@@ -191,7 +191,7 @@ yap(numbers[2]);
 ```
 3
 ```
-###Modify array elements:
+### Modify array elements:
 ```yap
 numbers[1] = 10;
 yap(numbers[1]);
