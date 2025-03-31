@@ -119,6 +119,11 @@ class ArrayAccess(AST):
     index: AST
 
 @dataclass
+class StringAccess(AST):
+    string: str
+    index: AST
+
+@dataclass
 class ArrayAssignment(AST):
     array: AST
     index: AST
@@ -334,14 +339,12 @@ def parse(s: str) -> AST:
         next(t)  # Consume '('
         
         values = []
-        while t.peek(None) and not isinstance(t.peek(None), ParenthesisToken):
+        while t.peek(None) and  t.peek(None).val != ")":
             values.append(parse_comparator())  # Always use parse_comparator to handle full expressions
-            
             if t.peek(None) == SymbolToken(","):
                 next(t)  # Consume ','
             else:
                 break
-
         if next(t) != ParenthesisToken(")"):
             raise ParseError("Expected ')' after print arguments", t.peek())
 
@@ -691,17 +694,32 @@ def parse(s: str) -> AST:
 
     def parse_div():
         try:
-            ast = parse_exponent()
+            ast = parse_modulo()  
             while True:
                 match t.peek(None):
                     case OperatorToken('/'):
                         next(t)
-                        ast = BinOp('/', ast, parse_exponent())
+                        ast = BinOp('/', ast, parse_modulo()) 
                     case _:
                         return ast
         except ParseError as e:
             print(e)
             return None
+
+    def parse_modulo():
+        try:
+            ast = parse_exponent()
+            while True:
+                match t.peek(None):
+                    case OperatorToken('%'):
+                        next(t)
+                        ast = BinOp('%', ast, parse_exponent())  
+                    case _:
+                        return ast
+        except ParseError as e:
+            print(e)
+            return None
+
 
     def parse_exponent():
         try:
@@ -757,6 +775,7 @@ def parse(s: str) -> AST:
                         index = parse_comparator()
                         if next(t) != ParenthesisToken(']'):
                             raise ParseError("Expected ']' after array index", t.peek())
+                        
                         return ArrayAccess(Variable(v), index)
                       # If no `[`, treat as normal variable
                     

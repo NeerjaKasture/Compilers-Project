@@ -127,6 +127,8 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
                     if e(r) == 0:
                         raise ZeroDivisionError("Division by zero")
                     return e(l) / e(r)
+                case "%":
+                    return e(l) % e(r)
                 case "^":
                     return e(l) ** e(r)
                 case "<":
@@ -162,6 +164,7 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
             return None
         
         case Declaration(var_type, var_name, value):
+            local_env,local_types = call_stack[-1]
             val = e(value, env, types)
             if val is None:  # Handle failed input
                 raise ValueError(f"Failed to get valid input for {var_name}")
@@ -185,15 +188,17 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
             return 
         
         case Assignment(var_name, value):
-            if var_name not in env:
+            local_env,local_types = call_stack[-1]
+
+            if var_name not in local_env:
                 raise NameError(f"Undefined variable: {var_name}")
 
-            val = e(value, env, types)
+            val = e(value, local_env, types)
 
-            if not isinstance(val, datatypes[types[var_name]]):
-                raise TypeError(f"Variable '{var_name}' must be of type {types[var_name]}")
+            if not isinstance(val, datatypes[local_types[var_name]]):
+                raise TypeError(f"Variable '{var_name}' must be of type {local_types[var_name]}")
 
-            env[var_name] = val
+            local_env[var_name] = val
             return 
         
         case While(condition, body):
@@ -260,9 +265,9 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
                 if isinstance(last_value,Return):
                     return last_value
                 elif isinstance(stmt, Return):
-                    return stmt  
-                
+                    return stmt       
             return last_value
+        
         case Break():
             return "break"
 

@@ -1,5 +1,4 @@
 import sys
-from lexer import lex
 from parser import parse
 from evaluator import e
 from typechecker import TypeChecker
@@ -18,7 +17,6 @@ except FileNotFoundError:
     sys.exit(1)
 
 ast = parse(code)
-print(ast)
 checker = TypeChecker()
 checker.visit(ast)
 
