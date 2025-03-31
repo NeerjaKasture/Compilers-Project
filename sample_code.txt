@@ -1,15 +1,17 @@
-print("===== Project Euler Tests =====");
-
-print("===== Problem 1: Multiples of 3 and 5 =====");
-def sumMultiples(int limit) -> int {
-    int sum = 0;
-    print(limit);
-    for (int i = 0; i < limit; i = i + 1) {
-        if (i % 3 == 0 or i % 5 == 0) {
-            sum = sum + i;
-        }
-    }
-    return sum
+print("hi");
+stack<int> st;
+st.push(3);
+st.push(2);
+st.push(1);
+st.pop();
+int x = st.top();
+print(x);
+stack<string> s;
+s.push("siri");
+string sz = s.top();
+print(sz);
+stack<int> new;
+for (int i = 0; i < 3; i = i + 1){
+    new.push(i);
+    print(new.top());
 }
-print(sumMultiples(10));   # Expected Output: 23
-print(sumMultiples(1000)); # Expected Output: 233168

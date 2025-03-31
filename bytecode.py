@@ -284,7 +284,7 @@ class AssemblyGenerator:
 
 # Example usage:
 
-with open('sample_code.txt', 'r', encoding='utf-8') as file:
+with open('bytecode_tests.txt', 'r', encoding='utf-8') as file:
         source_code = file.read()
 ast = parse(source_code)
 print(ast)

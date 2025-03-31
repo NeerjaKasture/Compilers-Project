@@ -13,7 +13,7 @@ print(2+3-4*5/2);
 if (2 < 3){ 
     print("Yes");} 
     else {
-       print("no");};
+       print("no");}
 
 #####
 int num = 5;
