@@ -124,11 +124,6 @@ class ArrayAccess(AST):
     index: AST
 
 @dataclass
-class StringAccess(AST):
-    string: str
-    index: AST
-
-@dataclass
 class ArrayAssignment(AST):
     array: AST
     index: AST

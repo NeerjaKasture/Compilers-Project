@@ -201,7 +201,7 @@ class TypeChecker:
                 array_type = self.visit(node.array)
                 
                 # Ensure it is an array type
-                if "[]" not in array_type:
+                if "[]" not in array_type and array_type!="string":
                     raise TypeError(f"Cannot index non-array type {array_type}")
 
                 # Extract the element type (e.g., "int[]" → "int")
