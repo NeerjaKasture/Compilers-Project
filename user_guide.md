@@ -141,6 +141,11 @@ for (int i = 0; i < 5; i = i + 1) {
 ```
 
 ### 6.3 `break` and `continue`
+
+‘break’ and ‘continue’ are the standard loop control statements
+break: Exits the loop immediately.
+continue: Skips the current iteration and moves to the next one.
+
 ```yap
 for (int i = 0; i < 5; i = i + 1) {
     yap(i);
@@ -172,12 +177,29 @@ for (int i = 0; i < 5; i = i + 1) {
 ```
 
 ## 7. Arrays
-
+Arrays can be defined for any of these types: int[], float[], bool[], string[]. Arrays having elments of different datatypes are not supported.
 ```yap
 int[] numbers = [1, 2, 3, 4];
 string[] words = ["hello", "world"];
 ```
 
+###Access array elements: 
+```yap
+yap(numbers[2]);
+```
+**Output:**
+```
+3
+```
+###Modify array elements:
+```yap
+numbers[1] = 10;
+yap(numbers[1]);
+```
+**Output:**
+```
+10
+```
 ### Appending Elements
 ```yap
 numbers.append(5);
@@ -185,7 +207,7 @@ yap(numbers);
 ```
 **Output:**
 ```
-[1, 2, 3, 4, 5]
+[1, 10, 3, 4, 5]
 ```
 
 ### Deleting Elements
