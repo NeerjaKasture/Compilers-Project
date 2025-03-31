@@ -161,6 +161,23 @@ class StackPop(AST):
 class StackTop(AST):
     stack_name: str
 
+@dataclass
+class QueueDeclaration(AST):
+    element_type: str 
+    name: str
+
+@dataclass
+class QueuePush(AST):
+    queue_name: str
+    value: AST
+
+@dataclass
+class QueuePop(AST):
+    queue_name: str
+
+@dataclass
+class QueueFirst(AST):
+    queue_name: str
 
 inside_function=False
 
@@ -247,16 +264,47 @@ def parse(s: str) -> AST:
                         raise ParseError("Expected ')' after function arguments", t.peek())
 
 
-                    # Check for stack operations
-                    if name.endswith(".push") and len(args) == 1:
+                    # Checking queue operations
+                    if name.endswith(".stackPush"):
+                        if len(args) != 1:
+                            raise ParseError(f"Stack push expects exactly 1 argument, got {len(args)}")
                         stack_name = name.split(".")[0]
                         return StackPush(stack_name, args[0])
-                    if name.endswith(".pop") and len(args) == 0:
+
+                    if name.endswith(".stackPop") and len(args) == 0:
                         stack_name = name.split(".")[0]
                         return StackPop(stack_name)
+
                     if name.endswith(".top") and len(args) == 0:
                         stack_name = name.split(".")[0]
                         return StackTop(stack_name)
+                    
+                    if name.endswith(".queuePush"):
+                        if len(args) != 1:
+                            raise ParseError(f"Queue push expects exactly 1 argument, got {len(args)}")
+                        queue_name = name.split(".")[0]
+                        return QueuePush(queue_name, args[0])
+
+                    if name.endswith(".queuePop") and len(args) == 0:
+                        queue_name = name.split(".")[0]
+                        return QueuePop(queue_name)
+
+                    if name.endswith(".first") and len(args) == 0:
+                        queue_name = name.split(".")[0]
+                        return QueueFirst(queue_name)
+                    
+                    # Check for stack operations
+                    # if name.endswith(".push"):
+                    #     if len(args) != 1:
+                    #         raise ParseError(f"Stack push expects exactly 1 argument, got {len(args)}")
+                    #     stack_name = name.split(".")[0]
+                    #     return StackPush(stack_name, args[0])
+                    # if name.endswith(".pop") and len(args) == 0:
+                    #     stack_name = name.split(".")[0]
+                    #     return StackPop(stack_name)
+                    # if name.endswith(".top") and len(args) == 0:
+                    #     stack_name = name.split(".")[0]
+                    #     return StackTop(stack_name)
                     
                     # Check for array operations
                     if name.endswith(".append") and len(args) == 1:
@@ -572,6 +620,29 @@ def parse(s: str) -> AST:
     def parse_declaration():
         try:
             match t.peek(None):
+                case KeywordToken("queue"):
+                    next(t)  # Consume 'queue'
+                    if t.peek(None) != OperatorToken('<'):
+                        raise ParseError("Expected '<' after 'queue'", t.peek())
+                    next(t)  # Consume '<'
+                    if not isinstance(t.peek(None), TypeToken):
+                        raise ParseError("Expected type after '<'", t.peek())
+                    element_type = next(t).val
+
+                    if t.peek(None) != OperatorToken('>'):
+                        raise ParseError("Expected '>' after queue element type", t.peek())
+                    next(t)
+
+                    if not isinstance(t.peek(None), VariableToken):
+                        raise ParseError("Expected queue name after '>'", t.peek())
+                    queue_name = next(t).val
+                    if queue_name in keywords:
+                        raise InvalidVariableNameError(queue_name)
+                    if t.peek(None) != SymbolToken(";"):
+                        raise ParseError("Expected ';' after queue declaration", t.peek())
+                    
+                    return QueueDeclaration(element_type, queue_name)
+                
                 case KeywordToken("stack"):
                     next(t)  # Consume 'stack'
                     if t.peek(None) != OperatorToken('<'):
