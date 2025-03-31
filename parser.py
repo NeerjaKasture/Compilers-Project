@@ -143,6 +143,23 @@ class ArrayDelete(AST):
 class Input(AST):
     type: str  
 
+@dataclass
+class StackDeclaration(AST):
+    element_type: str
+    name: str
+
+@dataclass
+class StackPush(AST):
+    stack_name: str
+    value: AST
+
+@dataclass
+class StackPop(AST):
+    stack_name: str
+
+@dataclass
+class StackTop(AST):
+    stack_name: str
 
 
 inside_function=False
@@ -229,6 +246,18 @@ def parse(s: str) -> AST:
                     if next(t) != ParenthesisToken(")"):
                         raise ParseError("Expected ')' after function arguments", t.peek())
 
+
+                    # Check for stack operations
+                    if name.endswith(".push") and len(args) == 1:
+                        stack_name = name.split(".")[0]
+                        return StackPush(stack_name, args[0])
+                    if name.endswith(".pop") and len(args) == 0:
+                        stack_name = name.split(".")[0]
+                        return StackPop(stack_name)
+                    if name.endswith(".top") and len(args) == 0:
+                        stack_name = name.split(".")[0]
+                        return StackTop(stack_name)
+                    
                     # Check for array operations
                     if name.endswith(".append") and len(args) == 1:
                         array_name = name.split(".")[0]
@@ -543,6 +572,29 @@ def parse(s: str) -> AST:
     def parse_declaration():
         try:
             match t.peek(None):
+                case KeywordToken("stack"):
+                    next(t)  # Consume 'stack'
+                    if t.peek(None) != OperatorToken('<'):
+                        raise ParseError("Expected '<' after 'stack'", t.peek())
+                    next(t)  # Consume '<'
+                    if not isinstance(t.peek(None), TypeToken):
+                        raise ParseError("Expected type after '<'", t.peek())
+                    element_type = next(t).val
+
+                    if t.peek(None) != OperatorToken('>'):
+                        raise ParseError("Expected '>' after stack element type", t.peek())
+                    next(t)
+
+                    if not isinstance(t.peek(None), VariableToken):
+                        raise ParseError("Expected stack name after '>'", t.peek())
+                    stack_name = next(t).val
+                    if stack_name in keywords:
+                        raise InvalidVariableNameError(stack_name)
+                    if t.peek(None) != SymbolToken(";"):
+                        raise ParseError("Expected ';' after stack declaration", t.peek())
+                    
+                    return StackDeclaration(element_type, stack_name)
+                
                 case TypeToken(var_type):
                     if var_type not in datatypes.keys():
                         raise TypeError("valid type", var_type)
