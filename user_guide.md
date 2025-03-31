@@ -211,7 +211,7 @@ yap(numbers);
 ```
 
 ### Deleting Elements
-Delete takes the index of the value which is to be deleted
+Delete takes the index of the element which is to be deleted
 ```yap
 numbers.delete(1);
 yap(numbers);
