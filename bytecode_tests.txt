@@ -1,0 +1,125 @@
+###########################Arithmetic and print
+yap(3*5+2);
+yap(7^4^2);
+yap(2.5^2);
+yap(3^7.3);
+yap(3 >= 2);
+yap((2+3)>4);
+yap(6/3*2);
+yap(2/3-4*5/2);
+yap(2+3-4*5/2);
+
+######################if elif else
+if (2 < 3){ 
+    yap("Yes");} 
+    else {
+       yap("no");}
+
+#####
+int num = 5;
+if (num > 0) {
+    yap("Positive number");
+} elif (num < 0) {
+    yap("Negative number");
+} else {
+    yap("Zero");
+}
+#######
+int y=3;
+bool z=nocap;
+if ((y > 2.5) and (z == nocap)) { 
+    yap("Complex condition nocap"); 
+} else { 
+    yap("Complex condition cap"); 
+}
+int f=7; #for more code after if-else
+
+#################################variables
+int x = 5;
+float y = 2.5;
+
+int x=10;
+x=x+1;
+yap(x);
+
+#####################################while loops
+int count = 0;
+while (count < 5) {
+    yap("Count is:", count);
+    count = count + 1;
+}
+
+int count = 0;
+while (count < 10) {
+    yap("Outer Count is:", count);
+    
+    int inner = 0;
+    while (inner < 5) {
+        yap("  Inner Count is:", inner);
+
+        if (inner == 2) {
+            break; 
+        }
+        
+        inner = inner + 1;
+    }
+
+    if (count == 3) {
+        break; 
+    }
+
+    count = count + 1;
+}
+
+
+int count=0;
+while (count < 10) {
+    yap("Count is:", count);
+    if(count==3){
+    continue;   
+    }
+    count = count + 1;
+}
+
+#########################for loops
+for (int i = 0; i < 5; i = i + 1) {
+    yap("Iteration:", i);
+}
+
+
+int x=0;
+for (int j = 10; (j > 0) and (x < 10); j = j - 2) {
+    yap("Count down:", j);
+    x = x + 1;
+}
+
+for (int i = 0; i < 5; i = i + 1) {
+    yap("Iteration:", i);
+    if (i==3){
+        continue;
+    }
+}
+
+for (int i = 1; i < 3; i = i + 1) {
+    for (int j = 1; j < 3; j = j + 1) {
+        yap("i:", i, " j:", j);
+    }
+}
+
+
+########################arrays
+int[] numbers = [1, 2, 3, 4, 5];
+yap(numbers[2]);
+numbers[2] = 42;
+yap(nums);
+yap("Sum of all elements: ", numbers[0]+numbers[1]+numbers[2]+numbers[3]+numbers[4]);
+for (int i = 0; i < 5; i = i + 1) {
+    numbers[i] = numbers[i] * 2;
+}
+numbers.append(6);
+numbers.delete(0);
+
+##########################inputs
+int x = spill();
+yap(x);
+

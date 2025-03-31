@@ -1,6 +1,6 @@
 from parser import parse
 
-arithmetic_operators = ["+", "-", "*", "/", "^"]
+arithmetic_operators = ["+", "-", "*", "/", "^","%"]
 comparison_operators = ["==", "!=", "<", ">", "<=", ">="]
 logical_operators = ["and", "or", "not"]
 bitwise_operators = ["&", "|", "~~"]
@@ -145,40 +145,40 @@ class TypeChecker:
                     cond_type = self.visit(node.If[0])
                     if cond_type != 'bool':
                         raise TypeError("Condition must be of type 'bool'")
-                    self.enter_scope()
+                    # self.enter_scope()
                     self.visit(node.If[1])  # Visit if-body
-                    self.exit_scope()
+                    # self.exit_scope()
                 
                 for cond, body in node.Elif:
                     cond_type = self.visit(cond)
                     if cond_type != 'bool':
                         raise TypeError("Condition must be of type 'bool'")
-                    self.enter_scope()
+                    # self.enter_scope()
                     self.visit(body)  # Visit elif-body
-                    self.exit_scope()
+                    # self.exit_scope()
                 
                 if node.Else:
-                    self.enter_scope()
+                    # self.enter_scope()
                     self.visit(node.Else)
-                    self.exit_scope()
+                    # self.exit_scope()
 
             case 'While':
                 cond_type = self.visit(node.condition)
                 if cond_type != 'bool':
                     raise TypeError("Condition must be of type 'bool'")
-                self.enter_scope()
+                # self.enter_scope()
                 self.visit(node.body)
-                self.exit_scope()
+                # self.exit_scope()
 
             case "For":
-                self.enter_scope()
+                # self.enter_scope()
                 self.visit(node.init)
                 cond_type = self.visit(node.condition)
                 if cond_type != 'bool':
                     raise TypeError("Condition must be of type 'bool'")
                 self.visit(node.increment)
                 self.visit(node.body)
-                self.exit_scope()
+                # self.exit_scope()
 
             case "Print":
                 for val in node.values:

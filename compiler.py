@@ -26,12 +26,10 @@ except IOError as e:
     print(f"Error reading file: {e}")
     sys.exit(1)
 
+ast = parse(code)
+checker = TypeChecker()
+checker.visit(ast)
 try:
-    ast = parse(code)
-    print(ast)
-    checker = TypeChecker()
-    checker.visit(ast)
-
     result = e(ast)
     result
 except Exception as e:
