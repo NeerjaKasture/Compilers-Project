@@ -306,4 +306,35 @@ yap(multiply(add(2, 3), 4));
 ```
 20
 ```
+Example: Function and Scoping
+```yap
+def changeVar(int x) -> int {
+    x = x + 10;
+    yeet x
+}
+int x = 5;
+yap(changeVar(x));  # Expected: 15
+yap(x);
+```
+**Output:**
+```
+
+15
+5
+```
+Explanation: Scoping in YAP
+
+In YAP, function parameters are passed by value. This means that when you call changeVar(x), the function gets a copy of x, not the original variable. Inside the function, the modification x = x + 10; affects only the copy, not the original x. After the function returns, x remains unchanged outside the function.
+
+To modify a variable globally, you would need to return the new value and explicitly reassign it:
+```yap
+int x = 5;
+x = changeVar(x);
+yap(x);
+```
+ **Output:**
+ ```
+15
+```
+
 
