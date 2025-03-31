@@ -158,7 +158,41 @@ For more details on writing YAP code, refer to the [User Guide](./user_guide.md)
 # Coverage
 
 We have made a comprehensive test suite for testing the implementation of our language. It has elaborative comments to explain the cases it is testing.
-The current test suite `testing.yap` gives **x% line coverage** and **y% branch coverage**.
+The current test suite `testing.yap` gives **82% line coverage** and **79% branch coverage**.
+
+## Line Coverage Report
+
+| File                      | Statements | Missed | Coverage |
+|---------------------------|------------|--------|----------|
+| `errors.py`               | 54         | 25     | 54%      |
+| `evaluator.py`            | 277        | 71     | 74%      |
+| `keywords.py`             | 2          | 0      | 100%     |
+| `lexer.py`                | 97         | 0      | 100%     |
+| `parser.py`               | 653        | 142    | 78%      |
+| `tests/test_evaluator.py` | 89         | 1      | 99%      |
+| `tests/test_lexer.py`     | 44         | 0      | 100%     |
+| `tests/test_parser.py`    | 108        | 2      | 98%      |
+| **TOTAL**                 | **1324**   | **241**| **82%**  |
+
+>  Run `pytest --cov` to get the line coverage report.
+
+## Branch Coverage Report
+
+| File                      | Statements | Missed | Branches | Partial | Coverage |
+|---------------------------|------------|--------|----------|---------|----------|
+| `errors.py`               | 54         | 25     | 0        | 0       | 54%      |
+| `evaluator.py`            | 277        | 71     | 226      | 40      | 72%      |
+| `keywords.py`             | 2          | 0      | 0        | 0       | 100%     |
+| `lexer.py`                | 97         | 0      | 46       | 0       | 100%     |
+| `parser.py`               | 653        | 142    | 242      | 59      | 76%      |
+| `tests/test_evaluator.py` | 89         | 1      | 2        | 1       | 98%      |
+| `tests/test_lexer.py`     | 44         | 0      | 0        | 0       | 100%     |
+| `tests/test_parser.py`    | 108        | 2      | 2        | 1       | 97%      |
+| **TOTAL**                 | **1324**   | **241**| **518**  | **101** | **79%**  |
+
+> Run `pytest --cov --cov-branch` to get the branch coverage report.
+
+
 
 # Work Distribution
 
