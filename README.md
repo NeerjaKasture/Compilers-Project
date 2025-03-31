@@ -52,7 +52,7 @@ Compilers-Project
 
 ## Additional Features
 - **Function Scope Handling**: Supports function calls with argument passing
-- **Array Operations**: Array creation, indexing, length appending, and deletion
+- **Array Operations**: Array creation, indexing, length, appending, and deletion
 - **String Concatenation**: Using `concat()`
 
 # Design Choices
