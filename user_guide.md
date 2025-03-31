@@ -1,14 +1,14 @@
-# YAP User Guide
+# How to Write Code in YAP?
 
 ## 1. Variables and Data Types
 
 The datatype of the variable must be defined by the user at the time of declaration. You can declare variables using the following types:
 
-- **int** - Whole numbers
-- **float** - Decimal numbers
-- **bool** - `nocap` (true) or `cap` (false)
-- **string** - Text
-- **int[]**, **float[]**, **bool[]**, **string[]** - Arrays
+- `int` - Whole numbers
+- `float` - Decimal numbers
+- `bool` - `nocap` (true) or `cap` (false)
+- `string` - Text
+- `int[]`, `float[]`, `bool[]`, `string[]` - Arrays
 
 ### Declaring Variables:
 ```yap
@@ -43,7 +43,7 @@ Use `spill()` to get values from the user.
 int age = spill();
 yap("Your age is: ", age);
 ```
-**If you enter 20, output will be:**
+If you enter `20`, output will be:
 ```
 Your age is: 20
 ```
@@ -51,7 +51,6 @@ Your age is: 20
 ## 4. Operations
 
 ### 4.1 Arithmetic Operations
-
 | Operator | Name            | Example | Output |
 |----------|----------------|---------|--------|
 | `+`      | Addition       | `5+3`   | `8`    |
@@ -62,26 +61,23 @@ Your age is: 20
 | `~`      | Unary Negation | `~2`    | `-2`   |
 
 ### 4.2 Comparison Operations
-
-| Operator | Name                      | Example | Output |
-|----------|---------------------------|---------|--------|
-| `<`      | Less than                 | `5<3`   | `cap`  |
-| `>`      | Greater than              | `5>3`   | `nocap`|
-| `<=`     | Less than or equal to     | `5<=3`  | `cap`  |
-| `>=`     | Greater than or equal to  | `5>=3`  | `nocap`|
-| `==`     | Equal to                  | `5==3`  | `cap`  |
-| `!=`     | Not equal to              | `5!=3`  | `nocap`|
+| Operator | Name                    | Example | Output |
+|----------|-------------------------|---------|--------|
+| `<`      | Less than                | `5<3`   | `cap`  |
+| `>`      | Greater than             | `5>3`   | `nocap`|
+| `<=`     | Less than or equal to    | `5<=3`  | `cap`  |
+| `>=`     | Greater than or equal to | `5>=3`  | `nocap`|
+| `==`     | Equal to                 | `5==3`  | `cap`  |
+| `!=`     | Not equal to             | `5!=3`  | `nocap`|
 
 ### 4.3 Logical Operations
-
-| Operator | Name  | Example           | Output |
-|----------|-------|------------------|--------|
-| `and`    | AND   | `nocap and cap`   | `cap`  |
-| `or`     | OR    | `nocap or cap`    | `nocap`|
-| `not`    | NOT   | `not cap`         | `nocap`|
+| Operator | Name  | Example        | Output |
+|----------|-------|---------------|--------|
+| `and`    | AND   | `nocap and cap` | `cap`  |
+| `or`     | OR    | `nocap or cap`  | `nocap`|
+| `not`    | NOT   | `not cap`      | `nocap`|
 
 ### 4.4 Bitwise Operations
-
 | Operator | Name | Example | Binary Calculation | Output |
 |----------|------|---------|--------------------|--------|
 | `&`      | AND  | `5&3`   | `101 & 011 = 001` | `1`    |
@@ -103,9 +99,7 @@ if (num > 0) {
     yap("Zero");
 }
 ```
-
 **Input:** `5`
-
 **Output:**
 ```
 Positive number
@@ -113,7 +107,7 @@ Positive number
 
 ## 6. Loops
 
-### 6.1 while loop
+### 6.1 `while` loop
 ```yap
 int count = 0;
 while (count < 5) {
@@ -130,7 +124,7 @@ while (count < 5) {
 4
 ```
 
-### 6.2 for loop
+### 6.2 `for` loop
 ```yap
 for (int i = 0; i < 5; i = i + 1) {
     yap(i);
@@ -145,17 +139,31 @@ for (int i = 0; i < 5; i = i + 1) {
 4
 ```
 
+### 6.3 `break` and `continue`
+```yap
+for (int i = 0; i < 5; i = i + 1) {
+    yap(i);
+    if (i==2){
+     break;
+    }
+}
+```
+**Output:**
+```
+0
+1
+2
+```
+
 ## 7. Arrays
 
-### Declaring Arrays:
 ```yap
 int[] numbers = [1, 2, 3, 4];
 string[] words = ["hello", "world"];
 ```
 
-### Appending an Element to an Array:
+### Appending Elements
 ```yap
-int[] numbers = [1, 2, 3];
 numbers.append(4);
 yap(numbers);
 ```
@@ -164,11 +172,19 @@ yap(numbers);
 [1, 2, 3, 4]
 ```
 
+### Deleting Elements
+```yap
+numbers.delete(1);
+yap(numbers);
+```
+**Output:**
+```
+[1, 3, 4]
+```
+
 ## 8. Functions
 
-Functions are defined using `def`, with return types specified. Use `yeet` to return values.
-
-### Example: Function with Parameters
+### Function with Parameters
 ```yap
 def add(int a, int b) -> int {
     yeet a + b
@@ -180,7 +196,19 @@ yap(add(5, 3));
 8
 ```
 
-### Example: Recursive Function
+### Function without Return Value
+```yap
+def greet(string name) {
+    yap("Hello, ", name);
+}
+greet("Alice");
+```
+**Output:**
+```
+Hello, Alice
+```
+
+### Recursive Function
 ```yap
 def fib(int n) -> int{
     if((n==1) or (n==0) ){
@@ -189,7 +217,6 @@ def fib(int n) -> int{
     int x = fib(n-1) + fib(n-2);
     yeet x
 }
-
 yap(fib(8));
 ```
 **Output:**
@@ -197,7 +224,7 @@ yap(fib(8));
 21
 ```
 
-### Example: Functions as First-Class Values
+### Functions as First-Class Values
 ```yap
 def add(int a, int b) -> int {
     yeet a + b
