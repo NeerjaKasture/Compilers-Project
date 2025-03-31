@@ -104,24 +104,20 @@ def lex(s: str) -> Iterator[Token]:
                             yield OperatorToken(two_char_op)
                             i += 2
                             continue
-                    if s[i] in '<>=!' and i + 1 < len(s) and s[i + 1] == '=':
-                        yield OperatorToken(s[i:i + 2])
+                    if s[i] in "}(){[]$":
+                        yield ParenthesisToken(s[i])
+                    elif s[i] == '-' and i + 1 < len(s) and s[i + 1] == '>':
+                        yield SymbolToken('->')
                         i += 2
+                    elif s[i] in '+ * - / ^ ~><=':
+                        yield OperatorToken(s[i])
                     else:
-                        if s[i] in "}(){[]$":
-                            yield ParenthesisToken(s[i])
-                        elif s[i] == '-' and i + 1 < len(s) and s[i + 1] == '>':
-                            yield SymbolToken('->')
-                            i += 2
-                        elif s[i] in '+ * - / ^ ~><=':
-                            yield OperatorToken(s[i])
-                        else:
-                            yield SymbolToken(s[i])
-                        i += 1
+                        yield SymbolToken(s[i])
+                    i += 1
                 # Handle bitwise operators separately
                 case '&' | '|':
                     yield OperatorToken(s[i])
                     i += 1
                 case _:
-                    raise SyntaxError(f"Unexpected character: {s[i]}", s[i])
+                    raise ValueError(f"Unexpected character: {s[i]}")
 
