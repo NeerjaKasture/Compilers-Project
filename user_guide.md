@@ -59,6 +59,7 @@ Your age is: 20
 | `/`      | Division       | `6/3`   | `2.0`  |
 | `^`      | Exponentiation | `5^3`   | `125`  |
 | `~`      | Unary Negation | `~2`    | `-2`   |
+| `%`      | Modulo         | `10%3`    | `1`   |
 
 ### 4.2 Comparison Operations
 | Operator | Name                    | Example | Output |
@@ -164,12 +165,12 @@ string[] words = ["hello", "world"];
 
 ### Appending Elements
 ```yap
-numbers.append(4);
+numbers.append(5);
 yap(numbers);
 ```
 **Output:**
 ```
-[1, 2, 3, 4]
+[1, 2, 3, 4, 5]
 ```
 
 ### Deleting Elements
@@ -179,7 +180,15 @@ yap(numbers);
 ```
 **Output:**
 ```
-[1, 3, 4]
+[1, 3, 4, 5]
+```
+### Finding length
+```yap
+yap(numbers.len());
+```
+**Output:**
+```
+4
 ```
 
 ## 8. Functions
