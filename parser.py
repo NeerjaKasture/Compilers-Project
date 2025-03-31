@@ -339,7 +339,7 @@ def parse(s: str) -> AST:
         next(t)  # Consume '('
         
         values = []
-        while t.peek(None) and not isinstance(t.peek(None), ParenthesisToken):
+        while t.peek(None) and t.peek(None).val != ")":
             values.append(parse_comparator())  # Always use parse_comparator to handle full expressions
             
             if t.peek(None) == SymbolToken(","):
