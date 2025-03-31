@@ -230,7 +230,11 @@ yap(numbers.len());
 ```
 
 ## 8. Functions
+A function is defined using def, and parameters are statically typed. The data type for return value is to be specified at the time of function definition, else the function is set to void by default. The keyword ‘yeet’ is used for returning functions. Functions can only return one value currently.
+*Note: There are no ‘;’ at the end of ‘yeet’ statements. 
+*Note: Functions cannot be parsed as parameters to other functions; However, function calls can be parsed.
 
+ 
 ### Function with Parameters
 ```yap
 def add(int a, int b) -> int {
@@ -253,6 +257,23 @@ greet("Alice");
 **Output:**
 ```
 Hello, Alice
+```
+
+### Function with an Array as Input and Output
+```yap
+def double_elements(int[] arr) -> int[] {
+    for (int i = 0; i < 4; i = i + 1) {
+        arr[i] = arr[i] * 2;
+    }
+    yeet arr
+}
+int[] numbers = [1, 2, 3, 4];
+int[] result = double_elements(numbers);
+yap("Doubled Array:", result);
+```
+**Output:**
+```
+Doubled Array:[2, 4, 6, 8]
 ```
 
 ### Recursive Function
