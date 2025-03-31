@@ -9,6 +9,23 @@ def is_array_type(type_str: str) -> bool:
 def get_base_type(type_str: str) -> str:
     return type_str[:-2] if is_array_type(type_str) else type_str
 
+class Stack:
+    def __init__(self):
+        self.items = []
+    
+    def push(self, item):
+        self.items.append(item)
+    
+    def pop(self):
+        if not self.items:
+            raise RuntimeError("Stack underflow")
+        self.items.pop()
+    
+    def top(self):
+        if not self.items:
+            raise RuntimeError("Stack is empty")
+        return self.items[-1]
+
 MAX_RECURSION_DEPTH = 1000
 def e(tree: AST, env={}, types={}, call_stack=[]):
 
@@ -345,5 +362,41 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
                 return env[array_name]  # Return updated array
             else:
                 raise TypeError(f"Cannot delete from non-array type: {array_name}")
-
+        case StackDeclaration(element_type, name):
+            if name in env:
+                raise NameError(f"Stack '{name}' already declared")
+            env[name] = Stack()  # Initialize an empty stack
+            types[name] = f"stack<{element_type}>"
+            return None
+        
+        case StackPush(stack_name, value):
+            if stack_name not in env:
+                raise NameError(f"Undefined stack: {stack_name}")
+            stack = env[stack_name]
+            if not isinstance(stack, Stack):
+                raise TypeError(f"{stack_name} is not a stack")
+            val = e(value, env, types)
+            # Get the element type from the stack type
+            element_type = types[stack_name].split('<')[1][:-1]  # Extract type between < and >
+            if not isinstance(val, datatypes[element_type]):
+                raise TypeError(f"Cannot push {type(val).__name__} to stack of {element_type}")
+            stack.push(val)
+            return None 
+        
+        case StackPop(stack_name):
+            if stack_name not in env:
+                raise NameError(f"Undefined stack: {stack_name}")
+            stack = env[stack_name]
+            if not isinstance(stack, Stack):
+                raise TypeError(f"{stack_name} is not a stack")
+            stack.pop()  
+            return None
+        
+        case StackTop(stack_name):
+            if stack_name not in env:
+                raise NameError(f"Undefined stack: {stack_name}")
+            stack = env[stack_name]
+            if not isinstance(stack, Stack):
+                raise TypeError(f"{stack_name} is not a stack")
+            return stack.top()
 
