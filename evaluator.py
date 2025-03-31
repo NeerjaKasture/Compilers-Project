@@ -168,8 +168,12 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
             return None
         
         case Declaration(var_type, var_name, value):
-            local_env,local_types = call_stack[-1]
-            val = e(value, env, types)
+            
+            local_env=env; local_types=types
+            if call_stack:
+                local_env,local_types = call_stack[-1]
+            
+            val = e(value, local_env, local_types)
             if val is None:  # Handle failed input
                 raise ValueError(f"Failed to get valid input for {var_name}")
             if is_array_type(var_type):
@@ -183,16 +187,19 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
                 \
                 raise TypeError(f"Variable '{var_name}' must be of type {var_type}")
 
-            env[var_name] = val
+            local_env[var_name] = val
 
             # is this ok to store type of python itself and not a string?
-            types[var_name] = var_type
+            local_types[var_name] = var_type
 
 
             return 
         
         case Assignment(var_name, value):
-            local_env,local_types = call_stack[-1]
+            
+            local_env=env; local_types=types
+            if call_stack:
+                local_env,local_types = call_stack[-1]
 
             if var_name not in local_env:
                 raise NameError(f"Undefined variable: {var_name}")
@@ -306,8 +313,9 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
         case ArrayAccess(array, index):
             array_val = e(array, env, types)
             index_val = e(index, env, types)
-            if not isinstance(array_val, list):
-                raise TypeError("Array access can only be used with arrays")
+            print(array_val,index_val)
+            if not isinstance(array_val, (list,str)):
+                raise TypeError("Only arrays and strings can be indexed")
             return array_val[index_val]
         case ArrayAssignment(array, index, value):
             array_val = e(array, env, types)
