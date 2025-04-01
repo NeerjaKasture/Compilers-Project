@@ -25,10 +25,26 @@ class Stack:
         if not self.items:
             raise RuntimeError("Stack is empty")
         return self.items[-1]
+    
+class Queue:
+    def __init__(self):
+        self.items = []
+    
+    def push(self, item):
+        self.items.append(item)
+    
+    def pop(self):
+        if not self.items:
+            raise RuntimeError("Queue underflow")
+        return self.items.pop(0)  # Remove and return first element
+    
+    def first(self):
+        if not self.items:
+            raise RuntimeError("Queue is empty")
+        return self.items[0]  # Return first element without removing it
 
 MAX_RECURSION_DEPTH = 1000
 def e(tree: AST, env={}, types={}, call_stack=[]):
-
     match tree:
         case Input(inp_type):
             try:
@@ -144,7 +160,9 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
                     if e(r) == 0:
                         raise ZeroDivisionError("Division by zero")
                     return e(l) / e(r)
-                case "%":
+                case  "%":
+                    if e(r) == 0:
+                        raise ZeroDivisionError("Division by zero")
                     return e(l) % e(r)
                 case "^":
                     return e(l) ** e(r)
@@ -152,6 +170,10 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
                     return e(l) < e(r)
                 case ">":
                     return e(l) > e(r)
+                case "<=":
+                    return e(l) <= e(r)
+                case ">=":
+                    return e(l) >= e(r)
                 case "==":
                     return e(l) == e(r)
                 case "!=":
@@ -401,4 +423,41 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
             if not isinstance(stack, Stack):
                 raise TypeError(f"{stack_name} is not a stack")
             return stack.top()
+        
+        case QueueDeclaration(element_type, name):
+            if name in env:
+                raise NameError(f"Queue '{name}' already declared")
+            env[name] = Queue()  # Initialize an empty queue
+            types[name] = f"queue<{element_type}>"
+            return None
+
+        case QueuePush(queue_name, value):
+            if queue_name not in env:
+                raise NameError(f"Undefined queue: {queue_name}")
+            queue = env[queue_name]
+            if not isinstance(queue, Queue):
+                raise TypeError(f"{queue_name} is not a queue")
+            val = e(value, env, types)
+            # Get the element type from the queue type
+            element_type = types[queue_name].split('<')[1][:-1]  # Extract type between < and >
+            if not isinstance(val, datatypes[element_type]):
+                raise TypeError(f"Cannot push {type(val).__name__} to queue of {element_type}")
+            queue.push(val)
+            return None
+
+        case QueuePop(queue_name):
+            if queue_name not in env:
+                raise NameError(f"Undefined queue: {queue_name}")
+            queue = env[queue_name]
+            if not isinstance(queue, Queue):
+                raise TypeError(f"{queue_name} is not a queue")
+            return queue.pop()
+
+        case QueueFirst(queue_name):
+            if queue_name not in env:
+                raise NameError(f"Undefined queue: {queue_name}")
+            queue = env[queue_name]
+            if not isinstance(queue, Queue):
+                raise TypeError(f"{queue_name} is not a queue")
+            return queue.first()
 

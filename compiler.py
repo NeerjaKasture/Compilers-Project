@@ -1,7 +1,7 @@
 import sys
 import os
 from lexer import lex
-from parser import parse
+from parser import parse, ParseError
 from evaluator import e
 from typechecker import TypeChecker
 
@@ -27,11 +27,12 @@ except IOError as e:
     sys.exit(1)
 
 ast = parse(code)
+# print(ast)
 checker = TypeChecker()
 checker.visit(ast)
 try:
     result = e(ast)
-    result
+    # result
 except Exception as e:
     print(f"Error during compilation: {e}")
     sys.exit(1)

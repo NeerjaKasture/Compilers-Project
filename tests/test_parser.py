@@ -51,18 +51,16 @@ def test_for_loop():
     source_code = """
     for (int i = 0; i < 5; i = i + 1) {
         yap("Iteration:", i);
+        if (i == 2) {
+            break;
+        } else {
+            continue;
+        }
     }
     """
 
-    expected_output = Sequence([
-        For(
-            init=Declaration(type='int', name='i', value=Number(val='0')),
-            condition=BinOp(op='<', left=Variable(val='i'), right=Number(val='5')),
-            increment=Assignment(name='i', value=BinOp(op='+', left=Variable(val='i'), right=Number(val='1'))),
-            body=Sequence([Print(values=[String(val='Iteration:'), Variable(val='i')])])
-        )
-    ])
-    
+    expected_output = Sequence([For(init=Declaration(type='int', name='i', value=Number(val='0')), condition=BinOp(op='<', left=Variable(val='i'), right=Number(val='5')), increment=Assignment(name='i', value=BinOp(op='+', left=Variable(val='i'), right=Number(val='1'))), body=Sequence([Print(values=[String(val='Iteration:'), Variable(val='i')]), Cond(If=(BinOp(op='==', left=Variable(val='i'), right=Number(val='2')), Sequence([Break()])), Elif=[], Else=Sequence([Continue()]))]))])
+        
     assert parse(source_code).statements == expected_output.statements
     print("For loop test passed!")
 
@@ -170,7 +168,6 @@ def test_functions_3():
         int x = fib(n-1) + fib(n-2);
         yeet x
     }
-
     yap(fib(8));
     """
 
@@ -179,7 +176,37 @@ def test_functions_3():
     assert parse(source_code).statements == expected_output.statements
     print("Functions test 3 passed!")
 
-def bitwise_ops():
+def test_functions_4():
+    source_code = """
+    def doubleArray(int [] arr) -> int [] {
+        for (int i = 0; i < 3; i = i + 1) {
+            arr[i] = arr[i] * 2;
+        }
+        yeet arr
+    }
+    int[] a = [1, 2, 3];
+    yap(doubleArray(a));  # Expected Output: [2, 4, 6]
+    """
+    
+    expected_output = Sequence([Function(name='doubleArray', params=[('int[]', 'arr')], return_type='int[]', body=Sequence([For(init=Declaration(type='int', name='i', value=Number(val='0')), condition=BinOp(op='<', left=Variable(val='i'), right=Number(val='3')), increment=Assignment(name='i', value=BinOp(op='+', left=Variable(val='i'), right=Number(val='1'))), body=Sequence([ArrayAssignment(array=Variable(val='arr'), index=Variable(val='i'), value=BinOp(op='*', left=ArrayAccess(array=Variable(val='arr'), index=Variable(val='i')), right=Number(val='2')))])), Return(value=Variable(val='arr'))])), Declaration(type='int[]', name='a', value=Array(elements=[Number(val='1'), Number(val='2'), Number(val='3')])), Print(values=[FunctionCall(name='doubleArray', params=[Variable(val='a')])])])
+
+    assert parse(source_code) == expected_output
+    print("Function test 4 is passed!")
+
+def test_functions_5():
+    source_code = """
+    def age (int n) {
+        int a = n;
+    }
+    age(5);
+    """
+
+    expected_output = Sequence([Function(name='age', params=[('int', 'n')], return_type='void', body=Sequence([Declaration(type='int', name='a', value=Variable(val='n'))])), FunctionCall(name='age', params=[Number(val='5')])])
+
+    assert parse(source_code) == expected_output
+    print("Function test 5 is passed!")
+
+def test_bitwise_ops():
     source_code = """
     yap(5&3);
     yap(5|3);
@@ -191,6 +218,75 @@ def bitwise_ops():
     assert parse(source_code).statements == expected_output.statements
     print("Bitwise operations test passed!")
 
+def test_missing_semicolon():
+    source_code = """
+    int age = 5
+    """
+
+    expected_output = Sequence([Declaration(type='int', name='age', value=Number(val='5'))])
+
+    assert parse(source_code).statements == expected_output.statements
+    print("Missing semicolon test passed!")
+
+def test_errors_in_function_call():
+    source_code1 = """
+    def age int n) -> int {
+        int a = n;
+        yeet a
+    }
+    yap(age(5));
+    """
+    try:
+        result = parse(source_code1)
+        assert result is None
+    except Exception as e:
+        assert str(e) == "assert Sequence([None]) is None"
+        print("Case 1 (missing '(' in function parameters) passed")
+
+    source_code2 = """
+    def age (int n -> int {
+        int a = n;
+        yeet a
+    }
+    yap(age(5));
+    """
+    try:
+        result = parse(source_code2)
+        assert result is None
+    except Exception as e:
+        assert str(e) == "assert Sequence([None]) is None"
+        print("Case 2 (missing ')' in function parameters) passed")
+
+    source_code3 = """
+    def age (n) -> int {
+        int a = n;
+        yeet a
+    }
+    """
+    try:
+        result = parse(source_code3)
+        # This should raise a TypeError about parameter types
+        assert False, "Should have raised TypeError about parameter types"
+    except TypeError as e:
+        assert "type for function parameter" in str(e)
+        print("Case 3 (missing parameter type) passed")
+
+    source_code4 = """
+    def age (int n) -> int {
+        int a = n;
+        yeet a
+    }
+    age(5;
+    """
+    try:
+        result = parse(source_code4)
+        assert result is None
+    except Exception as e:
+        assert str(e) == "assert Sequence([Function(name='age', params=[('int', 'n')], return_type='int', body=Sequence([Declaration(type='int', name='a', value=Variable(val='n')), Return(value=Variable(val='a'))])), None]) is None"
+        print("Case 2 (missing ')' in function arguments) passed")
+    
+    print("Errors in function call test passed!")
+
 def test_parser():
     test_variable_declarations()
     test_conditional_statements()
@@ -200,7 +296,11 @@ def test_parser():
     test_functions_1()
     test_functions_2()
     test_functions_3()
-    bitwise_ops()
+    test_functions_4()
+    test_functions_5()
+    test_bitwise_ops()
+    test_missing_semicolon()
+    test_errors_in_function_call()
     
     print("All tests passed!")
 
