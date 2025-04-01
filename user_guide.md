@@ -105,7 +105,33 @@ if (num > 0) {
 ```
 Positive number
 ```
+### Example: Nested If-Else
+```yap
+int x =4;
+float y =7.0;
+bool z = nocap;
+string msg = "hello";
+if (x > 0) {
+    if ((y > 2.0) and (z == nocap)) {
+        yap("Complex nested condition 1");
+        if (msg == "Hello") {
+            yap("Deepest nesting");
+        } else {
+            yap("Deep nest else");
+        }
+    } else {
+        yap("Complex nested condition 2");
+    }
+} else {
+    yap("Outer else");
+}
 
+```
+**Output:**
+```
+Complex nested condition 1
+Deep nest else
+```
 ## 6. Loops
 
 ### 6.1 `while` loop
