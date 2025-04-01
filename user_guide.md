@@ -346,4 +346,9 @@ A stack follows the **Last In, First Out (LIFO)** principle.
 #### Declaring a Stack:
 ```yap
 stack<int> s;
-
+#### Stack operations:
+```yap
+s.stackPush(3) - pushes 3 into stack
+s.stackPop()-pops the top element
+s.top() - return the top element
+```
