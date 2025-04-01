@@ -340,7 +340,7 @@ yap(x);
 
 Stacks and queues can be declared using `stack<type>` and `queue<type>`, where `type` is the datatype.
 
-### 9.1 Stack Operations
+### 9.1 Stacks
 A stack follows the **Last In, First Out (LIFO)** principle.
 
 #### Declaring a Stack:
@@ -352,4 +352,17 @@ stack<int> s;
 s.stackPush(3) - pushes 3 into stack
 s.stackPop()-pops the top element
 s.top() - return the top element
+```
+### 9.2 Queues
+A queue follows the **First In, First Out (FIFO)** principle.
+
+#### Declaring a Queue:
+```
+queue<int> q;
+```
+#### Queue operations:
+```
+q.queuePush(3) - pushes 3 into queue
+q.queuePop()-pops the first element
+q.first() - return the first element
 ```
