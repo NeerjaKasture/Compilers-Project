@@ -286,23 +286,3 @@ def test_errors_in_function_call():
         print("Case 2 (missing ')' in function arguments) passed")
     
     print("Errors in function call test passed!")
-
-def test_parser():
-    test_variable_declarations()
-    test_conditional_statements()
-    test_for_loop()
-    test_nested_while_loops()
-    test_arrays()
-    test_functions_1()
-    test_functions_2()
-    test_functions_3()
-    test_functions_4()
-    test_functions_5()
-    test_bitwise_ops()
-    test_missing_semicolon()
-    test_errors_in_function_call()
-    
-    print("All tests passed!")
-
-if __name__ == "__main__":
-    test_parser()

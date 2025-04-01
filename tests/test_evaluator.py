@@ -56,7 +56,7 @@ def test_conditionals():
     int a = 40;
     int b = 100;
     int c = 500;
-    int num = 5;
+    int num = ~5;
     if (num > 0) {
         yap("Positive number");
     } elif (num < 0) {
@@ -86,7 +86,7 @@ def test_conditionals():
         }
     }
     """
-    expected_output = "Positive number\nc > b > a\n"  
+    expected_output = "Negative number\nc > b > a\n"  
 
     ast = parse(source_code)
     f = io.StringIO()
@@ -161,13 +161,43 @@ def test_while_loop():
     while (outer < 3) {
         int inner = 1;
         while (inner < 3) {
+            if (inner == 2) {
+                inner = inner + 1;
+                continue;
+            }
             yap("outer:", outer, " inner:", inner);
             inner = inner + 1;
+        }
+        if (outer == 2) {
+            break;
         }
         outer = outer + 1;
     }
     """
-    expected_output = "outer:1 inner:1\nouter:1 inner:2\nouter:2 inner:1\nouter:2 inner:2\n"
+    expected_output = "outer:1 inner:1\nouter:2 inner:1\n"
+
+    ast = parse(source_code)
+    f = io.StringIO()
+    with redirect_stdout(f):
+        e(ast)
+    actual_output = f.getvalue()
+
+    assert actual_output == expected_output, f"Expected '{expected_output}', but got '{actual_output}'"
+    print("While Loops test passed!")
+
+def test_while_loop_2():
+    source_code = """
+    int count = 0;
+    while (nocap) {
+        if (count < 5) {
+            yap("hi");
+        } else {
+            break;
+        }
+        count = count + 1;
+    }
+    """
+    expected_output = "hi\nhi\nhi\nhi\nhi\n"
 
     ast = parse(source_code)
     f = io.StringIO()
@@ -258,17 +288,50 @@ def test_functions():
     assert actual_output == expected_output, f"Expected '{expected_output}', but got '{actual_output}'"
     print("Functions test passed!")
 
+def test_stack():
+    source_code = """
+    stack<int> s1;
+    s1.stackPush(5);
+    yap(s1.top());
+    s1.stackPop();
+    s1.stackPush(10);
+    s1.stackPush(20);
+    yap(s1.top());
+    """
+    expected_output = "5\n20\n"  
 
-def test_evaluator():
-    test_variables()
-    # test_input()
-    test_conditionals()
-    test_operations()
-    test_for_loop()
-    test_while_loop
-    test_arrays()
-    test_functions()
-    print("All tests passed!")
+    ast = parse(source_code)
+    f = io.StringIO()
+    with redirect_stdout(f):
+        e(ast)
+    actual_output = f.getvalue()
 
-if __name__ == "__main__":
-    test_evaluator()
+    print("expected", expected_output)
+    print("actual", actual_output)
+
+    assert actual_output == expected_output, f"Expected '{expected_output}', but got '{actual_output}'"
+    print("Stack test passed!")
+
+def test_queue():
+    source_code = """
+    queue<int> q1;
+    q1.queuePush(1);
+    q1.queuePush(2);
+    q1.queuePush(3);
+    yap(q1.first()); 
+    q1.queuePop();
+    yap(q1.first());
+    """
+    expected_output = "1\n2\n"  
+
+    ast = parse(source_code)
+    f = io.StringIO()
+    with redirect_stdout(f):
+        e(ast)
+    actual_output = f.getvalue()
+
+    print("expected", expected_output)
+    print("actual", actual_output)
+
+    assert actual_output == expected_output, f"Expected '{expected_output}', but got '{actual_output}'"
+    print("Queue test passed!")

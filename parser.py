@@ -898,7 +898,7 @@ def parse(s: str) -> AST:
                             next(t)
                             left = parse_atom()
                             match t.peek(None):
-                                case OperatorToken(','):
+                                case SymbolToken(','):
                                     next(t)
                                     right = parse_atom()
                                     match t.peek(None):
