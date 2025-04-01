@@ -1,11 +1,16 @@
+### NOT WORKING
+
+
 def is_prime(int num) -> bool{
     for(int i=2;i<num;i=i+1){
         if((num%i)==0){
-            yeet nocap
+            yeet cap
         }
     }
-    yeet cap
+    yeet nocap
 }
+
+int[] factors = [600851475143];
 
 while(nocap){
     if(is_prime(factors[0])){
@@ -20,3 +25,6 @@ while(nocap){
     }
 }
 
+for(int i = 0; i<factors.len();i=i+1){
+    yap(factors[i]);
+}

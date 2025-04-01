@@ -140,6 +140,11 @@ class ArrayDelete(AST):
     index: AST
 
 @dataclass
+class ArrayLength(AST):
+    array: AST
+
+
+@dataclass
 class Input(AST):
     type: str  
 
@@ -204,8 +209,8 @@ def parse(s: str) -> AST:
                     case ParenthesisToken("}"):  
                         break
                     case _:
-                        stmt = parse_condition()
                         
+                        stmt = parse_condition()
                         statements.append(stmt)
                 
                 if isinstance(statements[-1], (Cond,Function,For,While)):
@@ -266,6 +271,12 @@ def parse(s: str) -> AST:
                     if name.endswith(".delete") and len(args) == 1:
                         array_name = name.split(".")[0]
                         return ArrayDelete(Variable(array_name), args[0])
+                    
+                    if name.endswith(".len"):
+                        array_name = name.split(".")[0]
+                        if len(args) != 0:
+                            raise ParseError("len function takes no arguments", t.peek())
+                        return ArrayLength(Variable(array_name))
                     
                     return FunctionCall(name, args)
                 case _:
@@ -383,18 +394,22 @@ def parse(s: str) -> AST:
         try:
             match t.peek(None):
                 case KeywordToken('if'):
+                    
                     next(t) 
 
                     if not isinstance(t.peek(None), ParenthesisToken) or t.peek(None).val != '(':
                         raise ParseError("Expected '(' after 'if' keyword", t.peek())
 
                     next(t) 
+                    
                     condition = parse_comparator()
+                    
 
                     closing_paren = next(t, None)  
                     if not isinstance(closing_paren, ParenthesisToken) or closing_paren.val != ')':
                         raise ParseError("Expected ')' after if condition", t.peek())
 
+                    
                     if not isinstance(t.peek(None), ParenthesisToken) or t.peek(None).val != '{':
                         raise ParseError("Expected '{' after if condition", t.peek())
                     
@@ -471,7 +486,7 @@ def parse(s: str) -> AST:
                                     raise ParseError("Expected ';' after for-loop condition", t.peek())
 
                             increment = parse_assignment()  # Parse increment (e.g., i = i + 1)
-
+                            
                             match next(t, None):
                                 case ParenthesisToken(')'):
                                     pass
@@ -485,7 +500,7 @@ def parse(s: str) -> AST:
                         case ParenthesisToken('{'):
                             next(t)
                             body = parse_sequence()  # Parse the body of the for loop
-                            
+                        
                             if t.peek(None) != ParenthesisToken('}'):
                                 raise ParseError("Expected '}' after for-loop body", t.peek())
                             next(t)  # Consume '}'
@@ -674,7 +689,6 @@ def parse(s: str) -> AST:
             ast = parse_add()
             while True:
                 match t.peek(None):
-                    
                     case OperatorToken(op):
                         if op in {"and", "or"}:  # added <=, >= and !=
                             next(t)
@@ -761,11 +775,13 @@ def parse(s: str) -> AST:
     def parse_modulo():
         try:
             ast = parse_exponent()
+            
             while True:
                 match t.peek(None):
                     case OperatorToken('%'):
                         next(t)
                         ast = BinOp('%', ast, parse_exponent())  
+                        
                     case _:
                         return ast
         except ParseError as e:
@@ -820,6 +836,7 @@ def parse(s: str) -> AST:
                     next(t)
                     return BinOp('*', Number('-1'), parse_atom())
                 case VariableToken(v):
+                    
                     next(t)
                     # Check if this variable is an array accessing term
                     if t.peek(None) == ParenthesisToken('['):
@@ -845,6 +862,7 @@ def parse(s: str) -> AST:
                 case ParenthesisToken('('):
                     next(t)
                     expr = parse_comparator()
+                    
                     match next(t, None):
                         case ParenthesisToken(')'):
                             return Parenthesis(expr)

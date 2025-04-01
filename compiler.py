@@ -27,7 +27,6 @@ except IOError as e:
     sys.exit(1)
 
 ast = parse(code)
-print(ast)
 checker = TypeChecker()
 checker.visit(ast)
 try:

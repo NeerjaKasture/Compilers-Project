@@ -121,7 +121,7 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
                 return int(v)
         case BinOp(op, l, r):
             if isinstance(e(l), bool) or isinstance(e(r), bool):
-                if op in {"+", "-", "*", "/", "^","<",">","<=",">=","&","|","~~"}:
+                if op in {"%","+", "-", "*", "/", "^","<",">","<=",">=","&","|","~~"}:
                     raise TypeError(f"Cannot apply '{op}' to Boolean type")
                 match op:
                     case "and":
@@ -131,15 +131,11 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
                     case "not":
                         return not e(r)
             if isinstance(e(l), str) or isinstance(e(r), str):
-                if op in {"+", "-", "*", "/", "^","<",">","<=",">=","&","|","~~"}:
+                if op in {"%","+", "-", "*", "/", "^","<",">","<=",">=","&","|","~~"}:
                     raise TypeError(f"Cannot apply '{op}' to String type")  
             match op:
                 case "+":
-                    left_val = e(l)
-                    right_val = e(r)
-                    if not (isinstance(left_val, (int, float)) and isinstance(right_val, (int, float))):
-                        raise TypeError("Addition (+) is only supported between numbers (int/float)")
-                    return left_val + right_val
+                    return e(l) + e(r)
                 case "-":
                     return e(l) - e(r)
                 case "*":
@@ -362,6 +358,12 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
                 return env[array_name]  # Return updated array
             else:
                 raise TypeError(f"Cannot delete from non-array type: {array_name}")
+        case ArrayLength(array):
+            array_name = array.val  # Get the variable name
+            if array_name in env and isinstance(env[array_name], list):
+                return len(env[array_name])  # Return the length of the array
+            else:
+                raise TypeError(f"Cannot get length of non-array type: {array_name}")
         case StackDeclaration(element_type, name):
             if name in env:
                 raise NameError(f"Stack '{name}' already declared")

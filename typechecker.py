@@ -231,6 +231,14 @@ class TypeChecker:
                     raise TypeError(f"Type mismatch: array '{node.array.val}' expects {element_type}, but got {value_type}")
 
                 return value_type  
+            
+            case "ArrayLength":
+                array_type = self.visit(node.array)
+                
+                if "[]" not in array_type and array_type!="string":
+                    raise TypeError(f"Cannot get length of non-array type {array_type}")
+
+                return "int"
 
             case "Parenthesis":
                 return self.visit(node.expr)
