@@ -338,3 +338,12 @@ yap(x);
 ```
 ## 9. Stacks and Queues
 
+Stacks and queues can be declared using `stack<type>` and `queue<type>`, where `type` is the datatype.
+
+### 9.1 Stack Operations
+A stack follows the **Last In, First Out (LIFO)** principle.
+
+#### Declaring a Stack:
+```yap
+stack<int> s;
+
