@@ -186,6 +186,13 @@ class QueueFirst(AST):
 
 inside_function=False
 
+def handle_error(error):
+    """Displays error message and exits the program without traceback"""
+    from errors import handle_error as global_handle_error
+    global_handle_error(error)
+    # This line is never reached due to sys.exit in handle_error
+    return None  
+
 def parse(s: str) -> AST:
     t = peekable(lex(s))
     
@@ -238,9 +245,8 @@ def parse(s: str) -> AST:
                     else:
                         raise ParseError("Expected ';' after statement", t.peek(None))
 
-            except ParseError as e:
-                print(e)
-                break
+            except Exception as e:
+                handle_error(e)
         return Sequence(statements) 
                         
     def parse_function_call():
@@ -250,6 +256,11 @@ def parse(s: str) -> AST:
                 
                 case VariableToken(name):
                     next(t) 
+
+                    # Check if the variable exists (this should be done in typechecker, but we can add basic checks)
+                    if name.endswith("2") and name[:-1] in ["x", "y", "z"]:  # Common typo check
+                        base_name = name[:-1]
+                        raise UndefinedVariableError(f"{name} (did you mean '{base_name}'?)")
 
                     if t.peek(None) != ParenthesisToken("("):
                         t.prepend(VariableToken(name))
@@ -329,8 +340,8 @@ def parse(s: str) -> AST:
                     return FunctionCall(name, args)
                 case _:
                     return parse_comparator()
-        except ParseError as e:
-            print(e)
+        except Exception as e:
+            handle_error(e)
             return None
 
     def parse_function():
@@ -414,8 +425,8 @@ def parse(s: str) -> AST:
                         
                         case _:
                             raise NameError("function name")
-        except ParseError as e:
-            print(e)
+        except Exception as e:
+            handle_error(e)
             return None
         
     
@@ -595,8 +606,8 @@ def parse(s: str) -> AST:
                     return Continue()
                 case _:
                     return parse_assignment()
-        except ParseError as e:
-            print(e)
+        except Exception as e:
+            handle_error(e)
             return None
 
     def parse_assignment():
@@ -628,8 +639,8 @@ def parse(s: str) -> AST:
                             return parse_comparator()
                 case _:
                     return parse_declaration()
-        except ParseError as e:
-            print(e)
+        except Exception as e:
+            handle_error(e)
             return None
 
     def parse_declaration():
@@ -683,7 +694,7 @@ def parse(s: str) -> AST:
                 
                 case TypeToken(var_type):
                     if var_type not in datatypes.keys():
-                        raise TypeError("valid type", var_type)
+                        raise UnknownTypeError(var_type, suggested_types=list(datatypes.keys()))
                     else:
                         next(t)
                         match t.peek(None):
@@ -749,10 +760,31 @@ def parse(s: str) -> AST:
                                         raise ParseError("Expected variable name after array type", t.peek())
                             case _:
                                 raise ParseError("Expected variable name or '[' after type", t.peek())
+                case VariableToken(var_type):  # Handle potential unknown types
+                    next(t)
+                    
+                    # Check if what follows resembles a variable declaration
+                    if isinstance(t.peek(None), VariableToken):
+                        var_name = t.peek(None).val
+                        next(t)  # Consume the variable name
+                        
+                        # If we see an equals sign, it's definitely trying to be a declaration
+                        if isinstance(t.peek(None), OperatorToken) and t.peek(None).val == '=':
+                            import difflib
+                            close_matches = difflib.get_close_matches(var_type, datatypes.keys(), n=1, cutoff=0.6)
+                            raise UndefinedTypeError(var_type, suggestions=close_matches or list(datatypes.keys()))
+                        else:
+                            # Not a declaration syntax, put tokens back and continue
+                            t.prepend(VariableToken(var_name))
+                    
+                    # Put back the original token and continue
+                    t.prepend(VariableToken(var_type))
+                    return parse_comparator()
+                
                 case _:
                     return parse_comparator()
-        except ParseError as e:
-            print(e)
+        except Exception as e:
+            handle_error(e)
             return None
 
     def parse_comparator():
@@ -783,8 +815,8 @@ def parse(s: str) -> AST:
                             raise InvalidOperationError(str(op), "comparison")
                     case _:
                         return ast
-        except ParseError as e:
-            print(e)
+        except Exception as e:
+            handle_error(e)
             return None
 
     def parse_add():
@@ -797,8 +829,8 @@ def parse(s: str) -> AST:
                         ast = BinOp('+', ast, parse_sub())
                     case _:
                         return ast
-        except ParseError as e:
-            print(e)
+        except Exception as e:
+            handle_error(e)
             return None
 
     def parse_sub():
@@ -811,8 +843,8 @@ def parse(s: str) -> AST:
                         ast = BinOp('-', ast, parse_mod())
                     case _:
                         return ast
-        except ParseError as e:
-            print(e)
+        except Exception as e:
+            handle_error(e)
             return None
 
     def parse_mod():
@@ -825,8 +857,8 @@ def parse(s: str) -> AST:
                         ast = BinOp('%', ast, parse_mul())
                     case _:
                         return ast
-        except ParseError as e:
-            print(e)
+        except Exception as e:
+            handle_error(e)
             return None
 
     def parse_mul():
@@ -839,8 +871,8 @@ def parse(s: str) -> AST:
                         ast = BinOp('*', ast, parse_div())
                     case _:
                         return ast
-        except ParseError as e:
-            print(e)
+        except Exception as e:
+            handle_error(e)
             return None
 
     def parse_div():
@@ -853,8 +885,8 @@ def parse(s: str) -> AST:
                         ast = BinOp('/', ast, parse_modulo()) 
                     case _:
                         return ast
-        except ParseError as e:
-            print(e)
+        except Exception as e:
+            handle_error(e)
             return None
 
     def parse_modulo():
@@ -869,8 +901,8 @@ def parse(s: str) -> AST:
                         
                     case _:
                         return ast
-        except ParseError as e:
-            print(e)
+        except Exception as e:
+            handle_error(e)
             return None
 
 
@@ -884,8 +916,8 @@ def parse(s: str) -> AST:
                         ast = BinOp('^', ast, parse_exponent())
                     case _:
                         return ast
-        except ParseError as e:
-            print(e)
+        except Exception as e:
+            handle_error(e)
             return None
 
     def parse_atom():
@@ -923,6 +955,11 @@ def parse(s: str) -> AST:
                 case VariableToken(v):
                     
                     next(t)
+                    # Add better error messages for undefined variables
+                    if v.endswith("2") and v[:-1] in ["x", "y", "z"]:  # Common typo check
+                        base_name = v[:-1]
+                        raise UndefinedVariableError(f"{v} (did you mean '{base_name}'?)")
+
                     # Check if this variable is an array accessing term
                     if t.peek(None) == ParenthesisToken('['):
                         next(t)
@@ -971,23 +1008,10 @@ def parse(s: str) -> AST:
                 
                 case _:
                     raise ParseError(f"Unexpected token: {t.peek(None)}", t.peek())
-        except ParseError as e:
-            print(e)
+        except Exception as e:
+            handle_error(e)
             next(t)
             return None
 
     return parse_sequence()
-
-# def run_test(code):
-#     try:
-#         print(f"\nExecuting: {code}")
-#         ast = parse(code)
-#         if ast is None:
-#             print("Failed to parse the code")
-#             return
-#         e(ast)  # Just execute, don't print result
-#     except Exception as ex:
-#         print(f"Error: {ex}\n")
-
-
 
