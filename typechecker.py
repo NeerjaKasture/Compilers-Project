@@ -242,6 +242,70 @@ class TypeChecker:
 
             case "Parenthesis":
                 return self.visit(node.expr)
-
+            
+            case "StackDeclaration":
+                self.declare_variable(node.name, f"stack<{node.element_type}>")
+                return None
+            case "StackPush":
+                if node.stack_name not in self.scopes[-1]:
+                    raise NameError(f"Stack '{node.stack_name}' not declared")
+                stack_type = self.lookup_variable(node.stack_name)
+                if not stack_type.startswith("stack<"):
+                    raise TypeError(f"{node.stack_name} is not a stack")
+                element_type = stack_type[6:-1]
+                value_type = self.visit(node.value)
+                
+                if value_type != element_type:
+                    raise TypeError(f"Cannot push {value_type} to stack of {element_type}")
+                return None
+            case "StackPop":
+                if node.stack_name not in self.scopes[-1]:
+                    raise NameError(f"Stack '{node.stack_name}' not declared")
+                stack_type = self.lookup_variable(node.stack_name)
+                if not stack_type.startswith("stack<"):
+                    raise TypeError(f"{node.stack_name} is not a stack")
+                return None
+            case "StackTop":
+                if node.stack_name not in self.scopes[-1]:
+                    raise NameError(f"Stack '{node.stack_name}' not declared")
+                stack_type = self.lookup_variable(node.stack_name)
+                if not stack_type.startswith("stack<"):
+                    raise TypeError(f"{node.stack_name} is not a stack")
+                # Return the element type for type checking
+                return stack_type[6:-1]
+            
+            case "QueueDeclaration":
+                self.declare_variable(node.name, f"queue<{node.element_type}>")
+                return None
+            case "QueuePush":
+                if node.queue_name not in self.scopes[-1]:
+                    raise NameError(f"Queue '{node.queue_name}' not declared")
+                queue_type = self.lookup_variable(node.queue_name)
+                if not queue_type.startswith("queue<"):
+                    raise TypeError(f"{node.queue_name} is not a queue")
+                
+                # Get the element type from queue<type>
+                element_type = queue_type[6:-1]
+                value_type = self.visit(node.value)
+                
+                if value_type != element_type:
+                    raise TypeError(f"Cannot push {value_type} to queue of {element_type}")
+                return None
+            
+            case "QueuePop":
+                if node.queue_name not in self.scopes[-1]:
+                    raise NameError(f"Queue '{node.queue_name}' not declared")
+                queue_type = self.lookup_variable(node.queue_name)
+                if not queue_type.startswith("queue<"):
+                    raise TypeError(f"{node.queue_name} is not a queue")
+                return None
+            case "QueueFirst":
+                if node.queue_name not in self.scopes[-1]:
+                    raise NameError(f"Queue '{node.queue_name}' not declared")
+                queue_type = self.lookup_variable(node.queue_name)
+                if not queue_type.startswith("queue<"):
+                    raise TypeError(f"{node.queue_name} is not a queue")
+                # Return the element type for type checking
+                return queue_type[6:-1]
             case _:
                 pass

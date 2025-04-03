@@ -410,3 +410,11 @@ queue<int> q2;
 int x = spill();  
 q2.queuePush(x);
 yap(q2.first());
+
+queue<int> q3;
+q3.queuePush(1);
+if (q3.first() > 0) {  
+    yap("nocap");
+} else {
+    yap("cap");
+}
