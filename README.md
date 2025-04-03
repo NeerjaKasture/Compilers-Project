@@ -162,33 +162,33 @@ The current test suite `testing.yap` gives **76% line coverage** and **72% branc
 
 ## Code Coverage Report
 
-### Line Coverage
-| Name                        | Stmts | Miss | Cover |
-|-----------------------------|------:|-----:|------:|
-| errors.py                   | 67    | 23   | 66%   |
-| evaluator.py                | 375   | 82   | 78%   |
-| keywords.py                 | 2     | 0    | 100%  |
-| lexer.py                    | 97    | 0    | 100%  |
-| parser.py                   | 765   | 151  | 80%   |
-| tests/test_evaluator.py      | 112   | 0    | 100%  |
-| tests/test_lexer.py          | 44    | 0    | 100%  |
-| tests/test_parser.py         | 91    | 1    | 99%   |
-| **TOTAL**                   | 1553  | 257  | 83%   |
+### **Line Coverage**
+| Name                      | Stmts | Miss | Cover |
+|---------------------------|------:|-----:|------:|
+| errors.py                 |   67  |   23 |   66% |
+| evaluator.py              |  374  |  144 |   61% |
+| keywords.py               |    2  |    0 |  100% |
+| lexer.py                  |   97  |    0 |  100% |
+| parser.py                 |  757  |  201 |   73% |
+| tests/test_evaluator.py   |   89  |    1 |   99% |
+| tests/test_lexer.py       |   44  |    0 |  100% |
+| tests/test_parser.py      |  108  |    2 |   98% |
+| **TOTAL**                 | **1538** | **371** | **76%** |
 
-### Branch Coverage
-| Name                        | Stmts | Miss | Branch | BrPart | Cover |
-|-----------------------------|------:|-----:|-------:|------:|------:|
-| errors.py                   | 67    | 23   | 2      | 0     | 64%   |
-| evaluator.py                | 375   | 82   | 288    | 59    | 75%   |
-| keywords.py                 | 2     | 0    | 0      | 0     | 100%  |
-| lexer.py                    | 97    | 0    | 46     | 0     | 100%  |
-| parser.py                   | 765   | 151  | 294    | 77    | 77%   |
-| tests/test_evaluator.py      | 112   | 0    | 0      | 0     | 100%  |
-| tests/test_lexer.py          | 44    | 0    | 0      | 0     | 100%  |
-| tests/test_parser.py         | 91    | 1    | 0      | 0     | 99%   |
-| **TOTAL**                   | 1553  | 257  | 630    | 136   | 80%   |
+---
 
-> **Note:** The coverage report is generated using `pytest --cov` and represents the latest test execution results.
+### **Branch Coverage**
+| Name                      | Stmts | Miss | Branch | BrPart | Cover |
+|---------------------------|------:|-----:|-------:|-------:|------:|
+| errors.py                 |   67  |   23 |      2 |      0 |   64% |
+| evaluator.py              |  374  |  144 |    286 |     48 |   61% |
+| keywords.py               |    2  |    0 |      0 |      0 |  100% |
+| lexer.py                  |   97  |    0 |     46 |      0 |  100% |
+| parser.py                 |  757  |  201 |    290 |     69 |   70% |
+| tests/test_evaluator.py   |   89  |    1 |      2 |      1 |   98% |
+| tests/test_lexer.py       |   44  |    0 |      0 |      0 |  100% |
+| tests/test_parser.py      |  108  |    2 |      2 |      1 |   97% |
+| **TOTAL**                 | **1538** | **371** | **628** | **119** | **72%** |
 
 
 # Work Distribution

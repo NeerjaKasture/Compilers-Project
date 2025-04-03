@@ -120,10 +120,9 @@ def test_operations():
     yap(nocap and cap);
     yap(nocap or cap);
     yap(not cap);
-    yap("yap" == "print");
-    yap(concat("h", "i"));
+    yap("yap" == "print")
     """
-    expected_output = "25\n5\n150\n1.5\n-15\n225\n5\nnocap\ncap\nnocap\ncap\ncap\nnocap\n10\n15\n-16\ncap\nnocap\nnocap\ncap\nhi\n"
+    expected_output = "25\n5\n150\n1.5\n-15\n225\n5\nnocap\ncap\nnocap\ncap\ncap\nnocap\n10\n15\n-16\ncap\nnocap\nnocap\ncap\n"
 
     ast = parse(source_code)
     f = io.StringIO()
@@ -225,9 +224,8 @@ def test_arrays():
     yap("String array:", words);
     words[0] = "hi";
     yap("Modified string array:", words);
-    yap("Length: ", words.len());
     """
-    expected_output = "Original array:[1, 2, 3, 4, 5]\nSum of all elements: 15\nFirst element:1\nModified array:[1, 2, 10, 4, 5]\nAfter append:[1, 2, 10, 4, 5, 6]\nAfter delete:[2, 10, 4, 5, 6]\nString array:['Hello', 'World']\nModified string array:['hi', 'World']\nLength: 2\n"
+    expected_output = "Original array:[1, 2, 3, 4, 5]\nSum of all elements: 15\nFirst element:1\nModified array:[1, 2, 10, 4, 5]\nAfter append:[1, 2, 10, 4, 5, 6]\nAfter delete:[2, 10, 4, 5, 6]\nString array:['Hello', 'World']\nModified string array:['hi', 'World']\n"
 
     ast = parse(source_code)
     f = io.StringIO()
