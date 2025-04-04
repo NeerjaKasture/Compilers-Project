@@ -40,7 +40,7 @@ Compilers-Project
 - Loops: `for`, `while` (supports `break` and `continue`)
 
 ### Functions
-- First-class functions
+- First-class functions (in progress)
 - User explicitly gives types for parameters and return value
 - Supports recursion
 
