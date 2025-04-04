@@ -158,7 +158,7 @@ For more details on writing YAP code, refer to the [User Guide](./user_guide.md)
 # Coverage
 
 We have made a comprehensive test suite for testing the implementation of our language. It has elaborative comments to explain the cases it is testing.
-The current test suite `testing.yap` gives **76% line coverage** and **72% branch coverage**.
+The current test suite `testing.yap` gives **83% line coverage** and **80% branch coverage**.
 
 ## Code Coverage Report
 
