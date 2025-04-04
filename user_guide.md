@@ -332,6 +332,21 @@ yap(multiply(add(2, 3), 4));
 ```
 20
 ```
+### Nesting functions
+```yap
+def f(int x)->int{
+    def g(int y)->int{
+        yeet y+1
+    }
+    yeet g(x)
+}
+
+yap(f(1));
+```
+**Output:**
+```
+2
+```
 Example: Function and Scoping
 ```yap
 def changeVar(int x) -> int {
