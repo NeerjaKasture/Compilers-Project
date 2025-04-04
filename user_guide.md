@@ -7,7 +7,7 @@ The datatype of the variable must be defined by the user at the time of declarat
 - `int` - Whole numbers
 - `float` - Decimal numbers
 - `bool` - `nocap` (true) or `cap` (false)
-- `string` - Text
+- `string` - Text ( concat supported)
 - `int[]`, `float[]`, `bool[]`, `string[]` - Arrays
 
 ### Declaring Variables:
