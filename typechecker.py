@@ -1,6 +1,6 @@
 from parser import parse
 
-arithmetic_operators = ["+", "-", "*", "/", "^"]
+arithmetic_operators = ["+", "-", "*", "/", "^","%"]
 comparison_operators = ["==", "!=", "<", ">", "<=", ">="]
 logical_operators = ["and", "or", "not"]
 bitwise_operators = ["&", "|", "~~"]
@@ -145,40 +145,40 @@ class TypeChecker:
                     cond_type = self.visit(node.If[0])
                     if cond_type != 'bool':
                         raise TypeError("Condition must be of type 'bool'")
-                    self.enter_scope()
+                    # self.enter_scope()
                     self.visit(node.If[1])  # Visit if-body
-                    self.exit_scope()
+                    # self.exit_scope()
                 
                 for cond, body in node.Elif:
                     cond_type = self.visit(cond)
                     if cond_type != 'bool':
                         raise TypeError("Condition must be of type 'bool'")
-                    self.enter_scope()
+                    # self.enter_scope()
                     self.visit(body)  # Visit elif-body
-                    self.exit_scope()
+                    # self.exit_scope()
                 
                 if node.Else:
-                    self.enter_scope()
+                    # self.enter_scope()
                     self.visit(node.Else)
-                    self.exit_scope()
+                    # self.exit_scope()
 
             case 'While':
                 cond_type = self.visit(node.condition)
                 if cond_type != 'bool':
                     raise TypeError("Condition must be of type 'bool'")
-                self.enter_scope()
+                # self.enter_scope()
                 self.visit(node.body)
-                self.exit_scope()
+                # self.exit_scope()
 
             case "For":
-                self.enter_scope()
+                # self.enter_scope()
                 self.visit(node.init)
                 cond_type = self.visit(node.condition)
                 if cond_type != 'bool':
                     raise TypeError("Condition must be of type 'bool'")
                 self.visit(node.increment)
                 self.visit(node.body)
-                self.exit_scope()
+                # self.exit_scope()
 
             case "Print":
                 for val in node.values:
@@ -201,7 +201,7 @@ class TypeChecker:
                 array_type = self.visit(node.array)
                 
                 # Ensure it is an array type
-                if "[]" not in array_type:
+                if "[]" not in array_type and array_type!="string":
                     raise TypeError(f"Cannot index non-array type {array_type}")
 
                 # Extract the element type (e.g., "int[]" → "int")
@@ -217,7 +217,7 @@ class TypeChecker:
             case "ArrayAssignment":
                 array_type = self.visit(node.array)
                 
-                if "[]" not in array_type:
+                if "[]" not in array_type and array_type!="string":
                     raise TypeError(f"Cannot assign to non-array type {array_type}")
 
                 element_type = array_type.replace("[]", "")
@@ -231,9 +231,81 @@ class TypeChecker:
                     raise TypeError(f"Type mismatch: array '{node.array.val}' expects {element_type}, but got {value_type}")
 
                 return value_type  
+            
+            case "ArrayLength":
+                array_type = self.visit(node.array)
+                
+                if "[]" not in array_type and array_type!="string":
+                    raise TypeError(f"Cannot get length of non-array type {array_type}")
+
+                return "int"
 
             case "Parenthesis":
                 return self.visit(node.expr)
-
+            
+            case "StackDeclaration":
+                self.declare_variable(node.name, f"stack<{node.element_type}>")
+                return None
+            case "StackPush":
+                if node.stack_name not in self.scopes[-1]:
+                    raise NameError(f"Stack '{node.stack_name}' not declared")
+                stack_type = self.lookup_variable(node.stack_name)
+                if not stack_type.startswith("stack<"):
+                    raise TypeError(f"{node.stack_name} is not a stack")
+                element_type = stack_type[6:-1]
+                value_type = self.visit(node.value)
+                
+                if value_type != element_type:
+                    raise TypeError(f"Cannot push {value_type} to stack of {element_type}")
+                return None
+            case "StackPop":
+                if node.stack_name not in self.scopes[-1]:
+                    raise NameError(f"Stack '{node.stack_name}' not declared")
+                stack_type = self.lookup_variable(node.stack_name)
+                if not stack_type.startswith("stack<"):
+                    raise TypeError(f"{node.stack_name} is not a stack")
+                return None
+            case "StackTop":
+                if node.stack_name not in self.scopes[-1]:
+                    raise NameError(f"Stack '{node.stack_name}' not declared")
+                stack_type = self.lookup_variable(node.stack_name)
+                if not stack_type.startswith("stack<"):
+                    raise TypeError(f"{node.stack_name} is not a stack")
+                # Return the element type for type checking
+                return stack_type[6:-1]
+            
+            case "QueueDeclaration":
+                self.declare_variable(node.name, f"queue<{node.element_type}>")
+                return None
+            case "QueuePush":
+                if node.queue_name not in self.scopes[-1]:
+                    raise NameError(f"Queue '{node.queue_name}' not declared")
+                queue_type = self.lookup_variable(node.queue_name)
+                if not queue_type.startswith("queue<"):
+                    raise TypeError(f"{node.queue_name} is not a queue")
+                
+                # Get the element type from queue<type>
+                element_type = queue_type[6:-1]
+                value_type = self.visit(node.value)
+                
+                if value_type != element_type:
+                    raise TypeError(f"Cannot push {value_type} to queue of {element_type}")
+                return None
+            
+            case "QueuePop":
+                if node.queue_name not in self.scopes[-1]:
+                    raise NameError(f"Queue '{node.queue_name}' not declared")
+                queue_type = self.lookup_variable(node.queue_name)
+                if not queue_type.startswith("queue<"):
+                    raise TypeError(f"{node.queue_name} is not a queue")
+                return None
+            case "QueueFirst":
+                if node.queue_name not in self.scopes[-1]:
+                    raise NameError(f"Queue '{node.queue_name}' not declared")
+                queue_type = self.lookup_variable(node.queue_name)
+                if not queue_type.startswith("queue<"):
+                    raise TypeError(f"{node.queue_name} is not a queue")
+                # Return the element type for type checking
+                return queue_type[6:-1]
             case _:
                 pass

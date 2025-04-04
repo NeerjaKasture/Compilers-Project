@@ -140,12 +140,58 @@ class ArrayDelete(AST):
     index: AST
 
 @dataclass
+class ArrayLength(AST):
+    array: AST
+
+
+@dataclass
 class Input(AST):
     type: str  
 
+@dataclass
+class StackDeclaration(AST):
+    element_type: str
+    name: str
 
+@dataclass
+class StackPush(AST):
+    stack_name: str
+    value: AST
+
+@dataclass
+class StackPop(AST):
+    stack_name: str
+
+@dataclass
+class StackTop(AST):
+    stack_name: str
+
+@dataclass
+class QueueDeclaration(AST):
+    element_type: str 
+    name: str
+
+@dataclass
+class QueuePush(AST):
+    queue_name: str
+    value: AST
+
+@dataclass
+class QueuePop(AST):
+    queue_name: str
+
+@dataclass
+class QueueFirst(AST):
+    queue_name: str
 
 inside_function=False
+
+def handle_error(error):
+    """Displays error message and exits the program without traceback"""
+    from errors import handle_error as global_handle_error
+    global_handle_error(error)
+    # This line is never reached due to sys.exit in handle_error
+    return None  
 
 def parse(s: str) -> AST:
     t = peekable(lex(s))
@@ -187,8 +233,8 @@ def parse(s: str) -> AST:
                     case ParenthesisToken("}"):  
                         break
                     case _:
-                        stmt = parse_condition()
                         
+                        stmt = parse_condition()
                         statements.append(stmt)
                 
                 if isinstance(statements[-1], (Cond,Function,For,While)):
@@ -199,9 +245,8 @@ def parse(s: str) -> AST:
                     else:
                         raise ParseError("Expected ';' after statement", t.peek(None))
 
-            except ParseError as e:
-                print(e)
-                break
+            except Exception as e:
+                handle_error(e)
         return Sequence(statements) 
                         
     def parse_function_call():
@@ -211,6 +256,11 @@ def parse(s: str) -> AST:
                 
                 case VariableToken(name):
                     next(t) 
+
+                    # Check if the variable exists (this should be done in typechecker, but we can add basic checks)
+                    if name.endswith("2") and name[:-1] in ["x", "y", "z"]:  # Common typo check
+                        base_name = name[:-1]
+                        raise UndefinedVariableError(f"{name} (did you mean '{base_name}'?)")
 
                     if t.peek(None) != ParenthesisToken("("):
                         t.prepend(VariableToken(name))
@@ -227,8 +277,51 @@ def parse(s: str) -> AST:
                             break
                     
                     if next(t) != ParenthesisToken(")"):
-                        raise ParseError("Expected ')' after function arguments", t.peek())
+                        raise ParseError("Expected ')' after function arguments", t.peek(None))
 
+
+                    # Checking queue operations
+                    if name.endswith(".stackPush"):
+                        if len(args) != 1:
+                            raise ParseError(f"Stack push expects exactly 1 argument, got {len(args)}")
+                        stack_name = name.split(".")[0]
+                        return StackPush(stack_name, args[0])
+
+                    if name.endswith(".stackPop") and len(args) == 0:
+                        stack_name = name.split(".")[0]
+                        return StackPop(stack_name)
+
+                    if name.endswith(".top") and len(args) == 0:
+                        stack_name = name.split(".")[0]
+                        return StackTop(stack_name)
+                    
+                    if name.endswith(".queuePush"):
+                        if len(args) != 1:
+                            raise ParseError(f"Queue push expects exactly 1 argument, got {len(args)}")
+                        queue_name = name.split(".")[0]
+                        return QueuePush(queue_name, args[0])
+
+                    if name.endswith(".queuePop") and len(args) == 0:
+                        queue_name = name.split(".")[0]
+                        return QueuePop(queue_name)
+
+                    if name.endswith(".first") and len(args) == 0:
+                        queue_name = name.split(".")[0]
+                        return QueueFirst(queue_name)
+                    
+                    # Check for stack operations
+                    # if name.endswith(".push"):
+                    #     if len(args) != 1:
+                    #         raise ParseError(f"Stack push expects exactly 1 argument, got {len(args)}")
+                    #     stack_name = name.split(".")[0]
+                    #     return StackPush(stack_name, args[0])
+                    # if name.endswith(".pop") and len(args) == 0:
+                    #     stack_name = name.split(".")[0]
+                    #     return StackPop(stack_name)
+                    # if name.endswith(".top") and len(args) == 0:
+                    #     stack_name = name.split(".")[0]
+                    #     return StackTop(stack_name)
+                    
                     # Check for array operations
                     if name.endswith(".append") and len(args) == 1:
                         array_name = name.split(".")[0]
@@ -238,11 +331,17 @@ def parse(s: str) -> AST:
                         array_name = name.split(".")[0]
                         return ArrayDelete(Variable(array_name), args[0])
                     
+                    if name.endswith(".len"):
+                        array_name = name.split(".")[0]
+                        if len(args) != 0:
+                            raise ParseError("len function takes no arguments", t.peek())
+                        return ArrayLength(Variable(array_name))
+                    
                     return FunctionCall(name, args)
                 case _:
                     return parse_comparator()
-        except ParseError as e:
-            print(e)
+        except Exception as e:
+            handle_error(e)
             return None
 
     def parse_function():
@@ -326,8 +425,8 @@ def parse(s: str) -> AST:
                         
                         case _:
                             raise NameError("function name")
-        except ParseError as e:
-            print(e)
+        except Exception as e:
+            handle_error(e)
             return None
         
     
@@ -339,14 +438,12 @@ def parse(s: str) -> AST:
         next(t)  # Consume '('
         
         values = []
-        while t.peek(None) and not isinstance(t.peek(None), ParenthesisToken):
+        while t.peek(None) and  t.peek(None).val != ")":
             values.append(parse_comparator())  # Always use parse_comparator to handle full expressions
-            
             if t.peek(None) == SymbolToken(","):
                 next(t)  # Consume ','
             else:
                 break
-
         if next(t) != ParenthesisToken(")"):
             raise ParseError("Expected ')' after print arguments", t.peek())
 
@@ -356,18 +453,22 @@ def parse(s: str) -> AST:
         try:
             match t.peek(None):
                 case KeywordToken('if'):
+                    
                     next(t) 
 
                     if not isinstance(t.peek(None), ParenthesisToken) or t.peek(None).val != '(':
                         raise ParseError("Expected '(' after 'if' keyword", t.peek())
 
                     next(t) 
+                    
                     condition = parse_comparator()
+                    
 
                     closing_paren = next(t, None)  
                     if not isinstance(closing_paren, ParenthesisToken) or closing_paren.val != ')':
                         raise ParseError("Expected ')' after if condition", t.peek())
 
+                    
                     if not isinstance(t.peek(None), ParenthesisToken) or t.peek(None).val != '{':
                         raise ParseError("Expected '{' after if condition", t.peek())
                     
@@ -444,7 +545,7 @@ def parse(s: str) -> AST:
                                     raise ParseError("Expected ';' after for-loop condition", t.peek())
 
                             increment = parse_assignment()  # Parse increment (e.g., i = i + 1)
-
+                            
                             match next(t, None):
                                 case ParenthesisToken(')'):
                                     pass
@@ -458,7 +559,7 @@ def parse(s: str) -> AST:
                         case ParenthesisToken('{'):
                             next(t)
                             body = parse_sequence()  # Parse the body of the for loop
-                            
+                        
                             if t.peek(None) != ParenthesisToken('}'):
                                 raise ParseError("Expected '}' after for-loop body", t.peek())
                             next(t)  # Consume '}'
@@ -505,8 +606,8 @@ def parse(s: str) -> AST:
                     return Continue()
                 case _:
                     return parse_assignment()
-        except ParseError as e:
-            print(e)
+        except Exception as e:
+            handle_error(e)
             return None
 
     def parse_assignment():
@@ -538,16 +639,62 @@ def parse(s: str) -> AST:
                             return parse_comparator()
                 case _:
                     return parse_declaration()
-        except ParseError as e:
-            print(e)
+        except Exception as e:
+            handle_error(e)
             return None
 
     def parse_declaration():
         try:
             match t.peek(None):
+                case KeywordToken("queue"):
+                    next(t)  # Consume 'queue'
+                    if t.peek(None) != OperatorToken('<'):
+                        raise ParseError("Expected '<' after 'queue'", t.peek())
+                    next(t)  # Consume '<'
+                    if not isinstance(t.peek(None), TypeToken):
+                        raise ParseError("Expected type after '<'", t.peek())
+                    element_type = next(t).val
+
+                    if t.peek(None) != OperatorToken('>'):
+                        raise ParseError("Expected '>' after queue element type", t.peek())
+                    next(t)
+
+                    if not isinstance(t.peek(None), VariableToken):
+                        raise ParseError("Expected queue name after '>'", t.peek())
+                    queue_name = next(t).val
+                    if queue_name in keywords:
+                        raise InvalidVariableNameError(queue_name)
+                    if t.peek(None) != SymbolToken(";"):
+                        raise ParseError("Expected ';' after queue declaration", t.peek())
+                    
+                    return QueueDeclaration(element_type, queue_name)
+                
+                case KeywordToken("stack"):
+                    next(t)  # Consume 'stack'
+                    if t.peek(None) != OperatorToken('<'):
+                        raise ParseError("Expected '<' after 'stack'", t.peek())
+                    next(t)  # Consume '<'
+                    if not isinstance(t.peek(None), TypeToken):
+                        raise ParseError("Expected type after '<'", t.peek())
+                    element_type = next(t).val
+
+                    if t.peek(None) != OperatorToken('>'):
+                        raise ParseError("Expected '>' after stack element type", t.peek())
+                    next(t)
+
+                    if not isinstance(t.peek(None), VariableToken):
+                        raise ParseError("Expected stack name after '>'", t.peek())
+                    stack_name = next(t).val
+                    if stack_name in keywords:
+                        raise InvalidVariableNameError(stack_name)
+                    if t.peek(None) != SymbolToken(";"):
+                        raise ParseError("Expected ';' after stack declaration", t.peek())
+                    
+                    return StackDeclaration(element_type, stack_name)
+                
                 case TypeToken(var_type):
                     if var_type not in datatypes.keys():
-                        raise TypeError("valid type", var_type)
+                        raise UnknownTypeError(var_type, suggested_types=list(datatypes.keys()))
                     else:
                         next(t)
                         match t.peek(None):
@@ -613,10 +760,31 @@ def parse(s: str) -> AST:
                                         raise ParseError("Expected variable name after array type", t.peek())
                             case _:
                                 raise ParseError("Expected variable name or '[' after type", t.peek())
+                case VariableToken(var_type):  # Handle potential unknown types
+                    next(t)
+                    
+                    # Check if what follows resembles a variable declaration
+                    if isinstance(t.peek(None), VariableToken):
+                        var_name = t.peek(None).val
+                        next(t)  # Consume the variable name
+                        
+                        # If we see an equals sign, it's definitely trying to be a declaration
+                        if isinstance(t.peek(None), OperatorToken) and t.peek(None).val == '=':
+                            import difflib
+                            close_matches = difflib.get_close_matches(var_type, datatypes.keys(), n=1, cutoff=0.6)
+                            raise UndefinedTypeError(var_type, suggestions=close_matches or list(datatypes.keys()))
+                        else:
+                            # Not a declaration syntax, put tokens back and continue
+                            t.prepend(VariableToken(var_name))
+                    
+                    # Put back the original token and continue
+                    t.prepend(VariableToken(var_type))
+                    return parse_comparator()
+                
                 case _:
                     return parse_comparator()
-        except ParseError as e:
-            print(e)
+        except Exception as e:
+            handle_error(e)
             return None
 
     def parse_comparator():
@@ -624,7 +792,6 @@ def parse(s: str) -> AST:
             ast = parse_add()
             while True:
                 match t.peek(None):
-                    
                     case OperatorToken(op):
                         if op in {"and", "or"}:  # added <=, >= and !=
                             next(t)
@@ -648,8 +815,8 @@ def parse(s: str) -> AST:
                             raise InvalidOperationError(str(op), "comparison")
                     case _:
                         return ast
-        except ParseError as e:
-            print(e)
+        except Exception as e:
+            handle_error(e)
             return None
 
     def parse_add():
@@ -662,22 +829,36 @@ def parse(s: str) -> AST:
                         ast = BinOp('+', ast, parse_sub())
                     case _:
                         return ast
-        except ParseError as e:
-            print(e)
+        except Exception as e:
+            handle_error(e)
             return None
 
     def parse_sub():
         try:
-            ast = parse_mul()
+            ast = parse_mod()
             while True:
                 match t.peek(None):
                     case OperatorToken('-'):
                         next(t)
-                        ast = BinOp('-', ast, parse_mul())
+                        ast = BinOp('-', ast, parse_mod())
                     case _:
                         return ast
-        except ParseError as e:
-            print(e)
+        except Exception as e:
+            handle_error(e)
+            return None
+
+    def parse_mod():
+        try:
+            ast = parse_mul()
+            while True:
+                match t.peek(None):
+                    case OperatorToken('%'):
+                        next(t)
+                        ast = BinOp('%', ast, parse_mul())
+                    case _:
+                        return ast
+        except Exception as e:
+            handle_error(e)
             return None
 
     def parse_mul():
@@ -690,23 +871,40 @@ def parse(s: str) -> AST:
                         ast = BinOp('*', ast, parse_div())
                     case _:
                         return ast
-        except ParseError as e:
-            print(e)
+        except Exception as e:
+            handle_error(e)
             return None
 
     def parse_div():
         try:
-            ast = parse_exponent()
+            ast = parse_modulo()  
             while True:
                 match t.peek(None):
                     case OperatorToken('/'):
                         next(t)
-                        ast = BinOp('/', ast, parse_exponent())
+                        ast = BinOp('/', ast, parse_modulo()) 
                     case _:
                         return ast
-        except ParseError as e:
-            print(e)
+        except Exception as e:
+            handle_error(e)
             return None
+
+    def parse_modulo():
+        try:
+            ast = parse_exponent()
+            
+            while True:
+                match t.peek(None):
+                    case OperatorToken('%'):
+                        next(t)
+                        ast = BinOp('%', ast, parse_exponent())  
+                        
+                    case _:
+                        return ast
+        except Exception as e:
+            handle_error(e)
+            return None
+
 
     def parse_exponent():
         try:
@@ -718,8 +916,8 @@ def parse(s: str) -> AST:
                         ast = BinOp('^', ast, parse_exponent())
                     case _:
                         return ast
-        except ParseError as e:
-            print(e)
+        except Exception as e:
+            handle_error(e)
             return None
 
     def parse_atom():
@@ -732,7 +930,7 @@ def parse(s: str) -> AST:
                             next(t)
                             left = parse_atom()
                             match t.peek(None):
-                                case OperatorToken(','):
+                                case SymbolToken(','):
                                     next(t)
                                     right = parse_atom()
                                     match t.peek(None):
@@ -755,13 +953,20 @@ def parse(s: str) -> AST:
                     next(t)
                     return BinOp('*', Number('-1'), parse_atom())
                 case VariableToken(v):
+                    
                     next(t)
+                    # Add better error messages for undefined variables
+                    if v.endswith("2") and v[:-1] in ["x", "y", "z"]:  # Common typo check
+                        base_name = v[:-1]
+                        raise UndefinedVariableError(f"{v} (did you mean '{base_name}'?)")
+
                     # Check if this variable is an array accessing term
                     if t.peek(None) == ParenthesisToken('['):
                         next(t)
                         index = parse_comparator()
                         if next(t) != ParenthesisToken(']'):
                             raise ParseError("Expected ']' after array index", t.peek())
+                        
                         return ArrayAccess(Variable(v), index)
                       # If no `[`, treat as normal variable
                     
@@ -779,6 +984,7 @@ def parse(s: str) -> AST:
                 case ParenthesisToken('('):
                     next(t)
                     expr = parse_comparator()
+                    
                     match next(t, None):
                         case ParenthesisToken(')'):
                             return Parenthesis(expr)
@@ -802,23 +1008,10 @@ def parse(s: str) -> AST:
                 
                 case _:
                     raise ParseError(f"Unexpected token: {t.peek(None)}", t.peek())
-        except ParseError as e:
-            print(e)
+        except Exception as e:
+            handle_error(e)
             next(t)
             return None
 
     return parse_sequence()
-
-# def run_test(code):
-#     try:
-#         print(f"\nExecuting: {code}")
-#         ast = parse(code)
-#         if ast is None:
-#             print("Failed to parse the code")
-#             return
-#         e(ast)  # Just execute, don't print result
-#     except Exception as ex:
-#         print(f"Error: {ex}\n")
-
-
 
