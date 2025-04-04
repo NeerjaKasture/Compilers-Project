@@ -318,7 +318,7 @@ yap(fib(8));
 21
 ```
 
-### Functions as First-Class Values
+### Function call as argument
 ```yap
 def add(int a, int b) -> int {
     yeet a + b
