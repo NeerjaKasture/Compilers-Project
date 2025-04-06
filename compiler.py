@@ -26,13 +26,13 @@ except IOError as e:
     print(f"Error reading file: {e}")
     sys.exit(1)
 
+# print(list(lex(code)))
 ast = parse(code)
-# print(ast)
-checker = TypeChecker()
-checker.visit(ast)
+# checker = TypeChecker()
+# checker.visit(ast)
 try:
     result = e(ast)
     # result
 except Exception as e:
-    print(f"Error during compilation: {e}")
+    print(f"Error : {e}")
     sys.exit(1)

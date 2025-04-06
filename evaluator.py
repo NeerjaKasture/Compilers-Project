@@ -46,21 +46,18 @@ class Queue:
 MAX_RECURSION_DEPTH = 1000
 def e(tree: AST, env={}, types={}, call_stack=[]):
     match tree:
-        case Input(inp_type):
-            try:
-                user_input = input()
-                match inp_type:
-                    case "int":
-                        return int(user_input)
-                    case "float":
-                        return float(user_input)
-                    case "string":
-                        return str(user_input)
-                    case _:
-                        raise TypeError(f"Unsupported input type: {inp_type}")
-            except ValueError as ve:
-                print(f"Invalid input for type {inp_type}: {ve}")
-                return None
+        case Input():
+            word = input()
+            if word == "nocap":
+                return True
+            elif word == "cap":
+                return False
+            elif word.count('.') == 1 and word.replace('.', '').isdigit():
+                    return float(word)
+            elif word.isdigit():
+                return int(word)
+            else:
+                return word           
             
         case Variable(v):
             if call_stack:    
@@ -96,8 +93,12 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
             for (param_type, param_name), arg in zip(func.params, args):
                 arg_value = e(arg, local_env, local_types)
                 
-                if not isinstance(arg_value, datatypes[param_type]):
-                    raise TypeError(f"Argument '{param_name}' must be of type {param_type}")
+                if param_type == "fn":
+                    if not isinstance(arg_value, Function):
+                        raise TypeError(f"Argument '{param_name}' must be a function")
+                else:
+                    if not isinstance(arg_value, datatypes[param_type]):
+                        raise TypeError(f"Argument '{param_name}' must be of type {param_type}")
 
                 local_env[param_name] = arg_value
                 local_types[param_name] = param_type 
@@ -107,9 +108,14 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
                 raise RecursionLimitError(name)
             result = e(func.body, local_env, local_types,call_stack)
             result=e(result)
-            if func.return_type != "void" and not isinstance(result, datatypes[func.return_type]):
-                raise TypeError(f"Function '{name}' must return a value of type {func.return_type}, but got {type(result).__name__}")
-
+            if func.return_type != "void":
+                if func.return_type == "fn":
+                    if not isinstance(result, Function):
+                        raise TypeError(f"Function '{name}' must return a function, but got {type(result).__name__}")
+                else:
+                    if not isinstance(result, datatypes[func.return_type]):
+                        raise TypeError(f"Function '{name}' must return a value of type {func.return_type}, but got {type(result).__name__}")
+                
             call_stack.pop()
 
             return result
@@ -137,7 +143,7 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
                 return int(v)
         case BinOp(op, l, r):
             if isinstance(e(l), bool) or isinstance(e(r), bool):
-                if op in {"%","+", "-", "*", "/", "^","<",">","<=",">=","&","|","~~"}:
+                if op in {"%","+", "-", "*", "/", "^","<",">","<=",">=","&","|","~~","//"}:
                     raise TypeError(f"Cannot apply '{op}' to Boolean type")
                 match op:
                     case "and":
@@ -147,7 +153,7 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
                     case "not":
                         return not e(r)
             if isinstance(e(l), str) or isinstance(e(r), str):
-                if op in {"%","+", "-", "*", "/", "^","<",">","<=",">=","&","|","~~"}:
+                if op in {"%","+", "-", "*", "/", "^","<",">","<=",">=","&","|","~~","//"}:
                     raise TypeError(f"Cannot apply '{op}' to String type")  
             match op:
                 case "+":
@@ -184,6 +190,10 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
                     return e(l) | e(r)
                 case "~~":  # Bitwise NOT (unary)
                     return ~e(r)  # Only use `left`, `right` is None
+                case "//":  # Floor division
+                    if e(r) == 0:
+                        raise ZeroDivisionError("Division by zero")
+                    return e(l) // e(r)
         case Cond(If, Elif, Else):
             if e(If[0]):
                 
@@ -203,49 +213,66 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
             return None
         
         case Declaration(var_type, var_name, value):
-            
-            local_env=env; local_types=types
+            local_env = env
+            local_types = types
             if call_stack:
-                local_env,local_types = call_stack[-1]
-            
+                local_env, local_types = call_stack[-1]
+
             val = e(value, local_env, local_types)
-            if val is None:  # Handle failed input
+            if val is None:
                 raise ValueError(f"Failed to get valid input for {var_name}")
+
             if is_array_type(var_type):
                 if not isinstance(val, list):
                     raise TypeError(f"Variable '{var_name}' must be of type {var_type}")
-                # Check that all elements are of the base type
-                base_type = datatypes[get_base_type(var_type)]
-                if not all(isinstance(x, base_type) for x in val):
-                    raise TypeError(f"All elements in array '{var_name}' must be of type {get_base_type(var_type)}")
-            elif not isinstance(val, datatypes[var_type]):
-                
-                raise TypeError(f"Variable '{var_name}' must be of type {var_type}")
+                base_type_str = get_base_type(var_type)
+                if base_type_str == "fn":
+                    if not all(isinstance(x, Function) for x in val):
+                        raise TypeError(f"All elements in array '{var_name}' must be functions")
+                else:
+                    base_type = datatypes[base_type_str]
+                    if not all(isinstance(x, base_type) for x in val):
+                        raise TypeError(f"All elements in array '{var_name}' must be of type {base_type_str}")
+
+            elif var_type == "fn":
+                if not isinstance(val, Function):
+                    raise TypeError(f"Variable '{var_name}' must be a function")
+            else:
+                if not isinstance(val, datatypes[var_type]):
+                    raise TypeError(f"Variable '{var_name}' must be of type {var_type}")
 
             local_env[var_name] = val
+            local_types[var_name] = var_type  # Keep string type info
+            return
 
-            # is this ok to store type of python itself and not a string?
-            local_types[var_name] = var_type
-
-
-            return 
-        
         case Assignment(var_name, value):
-            
-            local_env=env; local_types=types
+            local_env = env
+            local_types = types
             if call_stack:
-                local_env,local_types = call_stack[-1]
+                local_env, local_types = call_stack[-1]
 
             if var_name not in local_env:
                 raise NameError(f"Undefined variable: {var_name}")
 
-            val = e(value, local_env, types)
+            val = e(value, local_env, local_types)
+            var_type = local_types[var_name]
 
-            if not isinstance(val, datatypes[local_types[var_name]]):
-                raise TypeError(f"Variable '{var_name}' must be of type {local_types[var_name]}")
+            if is_array_type(var_type):
+                if not isinstance(val, list):
+                    raise TypeError(f"Variable '{var_name}' must be of type {var_type}")
+                base_type = datatypes[get_base_type(var_type)]
+                if not all(isinstance(x, base_type) for x in val):
+                    raise TypeError(f"All elements in array '{var_name}' must be of type {get_base_type(var_type)}")
+            elif var_type == "fn":
+                if not isinstance(val, Function):
+                    raise TypeError(f"Variable '{var_name}' must be a function")
+            else:
+                if not isinstance(val, datatypes[var_type]):
+                    raise TypeError(f"Variable '{var_name}' must be of type {var_type}")
 
             local_env[var_name] = val
-            return 
+            return
+
         
         case While(condition, body):
             while e(condition, env, types):
@@ -337,12 +364,12 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
                 if isinstance(result, bool): 
                     result = "nocap" if result else "cap"
                 results.append(result)
-            # print(*results)  # This will print the values
-            print("".join(map(str, results))) # this will print the values without adding extra space while printing
+            # print(*results) 
+            print("".join(map(str, results)))
             return None
             # results = [e(value, env, types) for value in values]
             # print(*results)  # Changed to use default print behavior with newline
-            # return None
+           
         case Array(elements):
             return [e(element, env, types) for element in elements]
         case ArrayAccess(array, index):

@@ -1,4 +1,16 @@
-keywords = ["if", "elif", "else", "nocap", "cap", "yap", "concat", "while", "for", "and", "or", "not", "def", "yeet", "void", "break", "continue","spill", "stack", "queue"]
+keywords = ["if", "elif", "else", "nocap", "cap", "yap", "concat", "while", "for", "and", "or", "not", "def", "yeet", "void", "break", "continue","spill","fn", "stack", "queue"]
+
+from dataclasses import dataclass
+
+class AST:
+    pass
+
+@dataclass
+class Function(AST):
+    name: str
+    params: list[tuple[str, str]]  # List of (type, name) pairs
+    return_type: str
+    body: AST 
 
 datatypes = {
     "int": int, 
@@ -8,6 +20,9 @@ datatypes = {
     "int[]": list,
     "float[]": list,
     "bool[]": list,
-    "string[]": list
+    "string[]": list,
+    "fn": Function,
+    "fn[]": Function,
+    "void": None,
 }
 

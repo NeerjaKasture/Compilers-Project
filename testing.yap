@@ -8,6 +8,10 @@ yap(y);
 yap(z);
 yap(msg);
 
+float t = 0.0;
+t = spill();
+yap(t);
+
 yap("=====If-else test cases=====");
 
 yap("test_no_1");
@@ -366,47 +370,51 @@ def fib(int n) -> int{
 
 yap(fib(8));
 
+yap("test_no_16");
+def f(int x)->int{
+    def g(int y)->int{
+        yeet y+1
+    }
+    yeet g(x)
+}
+
+yap(f(1));
+
+yap("test_no_17");
+def double(int x) -> int {
+    yeet x * 2
+}
+
+fn f = double;
+yap(f(5));  # Expect 10
+
+yap("test_no_18");
+def double(int x) -> int {
+    yeet x * 2
+}
+
+def apply_twice(fn f, int x) -> int {
+    yeet f(f(x))
+}
+
+yap(apply_twice(double, 2));  # Expect 8
+
+yap("test_no_19");
+def return_fn() -> fn {
+    def say_hello() -> int {
+        yap("hi");
+        yeet 0
+    }
+
+    yeet say_hello
+}
+
+fn greeter = return_fn();
+greeter();  # Expect: hi
+
 yap("===== Bitwise &, |, ~~ =====");
 
 yap(5&3);
 yap(5|3);
 yap(~~3);
 
-yap("========== stack test cases ===========");
-stack<int> s1;
-s1.stackPush(5);
-yap(s1.top());
-s1.stackPop();
-s1.stackPush(10);
-s1.stackPush(20);
-yap(s1.top()); 
-
-stack<string> s2;
-s2.stackPush("hello");
-s2.stackPush("world");
-yap(s2.top()); 
-s2.stackPop();
-yap(s2.top());
-
-stack<int> s3;
-for(int i = 0; i < 5; i = i + 1) {
-    s3.stackPush(i);
-}
-for(int i = 0; i < 5; i = i + 1) {
-    yap(s3.top());  
-    s3.stackPop();
-}
-
-yap("======== Queue test cases =========");
-queue<int> q1;
-q1.queuePush(1);
-q1.queuePush(2);
-q1.queuePush(3);
-yap(q1.first()); 
-q1.queuePop();
-yap(q1.first());
-
-queue<int> q2;
-int x = spill();  
-q2.queuePush(x);
-yap(q2.first());

@@ -108,8 +108,12 @@ def lex(s: str) -> Iterator[Token]:
                         yield ParenthesisToken(s[i])
                     elif s[i] == '-' and i + 1 < len(s) and s[i + 1] == '>':
                         yield SymbolToken('->')
-                        i += 2
-                    elif s[i] in '+ * - / ^ ~><= %':
+                        i += 1
+                    elif s[i] == '/' and i + 1 < len(s) and s[i + 1] == '/':
+                        yield OperatorToken('//')
+                        i += 1
+                        
+                    elif s[i] in '+ * / - ^ ~><= %':
                         yield OperatorToken(s[i])
                     else:
                         yield SymbolToken(s[i])

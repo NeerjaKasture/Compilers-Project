@@ -1,6 +1,6 @@
 from parser import parse
 
-arithmetic_operators = ["+", "-", "*", "/", "^","%"]
+arithmetic_operators = ["+", "-", "*", "/", "^","%","//"]
 comparison_operators = ["==", "!=", "<", ">", "<=", ">="]
 logical_operators = ["and", "or", "not"]
 bitwise_operators = ["&", "|", "~~"]
@@ -101,6 +101,8 @@ class TypeChecker:
                 
             case 'Function':
                 self.functions[node.name] = (node.params, node.return_type)
+                self.declare_variable(node.name, 'fn')
+
                 self.enter_scope()  # Enter function scope
                 for param_type, param_name in node.params:
                     self.declare_variable(param_name, param_type)
@@ -110,21 +112,38 @@ class TypeChecker:
                 if return_type != node.return_type and return_type != "undefined":
                     raise TypeError(f'Function {node.name} return type mismatch: expected {node.return_type}, got {return_type}')
                 self.exit_scope()  # Exit function scope
+                return "fn"
             
             case 'Return':
                 return self.visit(node.value)
             
             case 'FunctionCall':
-                if node.name not in self.functions:
-                    raise NameError(f'Function {node.name} not declared')
-                expected_params, return_type = self.functions[node.name]
-                if len(node.params) != len(expected_params):
-                    raise TypeError(f'Function {node.name} expects {len(expected_params)} arguments, got {len(node.params)}')
-                for (expected_type, _), arg in zip(expected_params, node.params):
-                    arg_type = self.visit(arg)
-                    if arg_type != expected_type:
-                        raise TypeError(f'Function {node.name} argument type mismatch: expected {expected_type}, got {arg_type}')
-                return return_type
+                if node.name in self.functions:
+                    expected_params, return_type = self.functions[node.name]
+                    if len(node.params) != len(expected_params):
+                        raise TypeError(f'Function {node.name} expects {len(expected_params)} arguments, got {len(node.params)}')
+                    
+                    for (expected_type, _), arg in zip(expected_params, node.params):
+                        arg_type = self.visit(arg)
+                        if arg_type != expected_type:
+                            raise TypeError(f'Function {node.name} argument type mismatch: expected {expected_type}, got {arg_type}')
+                    return return_type
+
+                # Else, check if it's a variable holding a function
+                else:
+                    try:
+                        var_type = self.lookup_variable(node.name)
+                        if var_type != 'fn':
+                            raise TypeError(f"'{node.name}' is not callable (type {var_type})")
+                        
+                        for arg in node.params:
+                            self.visit(arg)
+
+                        return 'undefined'  # Or you could track the return type later
+                    except NameError:
+                        raise NameError(f'Function {node.name} not declared')
+    
+                    
             
             case 'Sequence':
                 last_type = None
