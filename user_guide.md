@@ -318,7 +318,7 @@ yap(fib(8));
 21
 ```
 
-### Functions as First-Class Values
+### Functions calls
 ```yap
 def add(int a, int b) -> int {
     yeet a + b
@@ -332,7 +332,43 @@ yap(multiply(add(2, 3), 4));
 ```
 20
 ```
-Example: Function and Scoping
+
+
+
+### Functions as first class values
+```yap
+
+def double(int x) -> int {
+    yeet x * 2
+}
+
+fn f = double;
+yap(f(5));  
+```
+**Output:**
+```
+10
+```
+```yap
+
+def return_fn() -> fn {
+    def say_hello() -> int {
+        yap("hi");
+        yeet 0
+    }
+
+    yeet say_hello
+}
+
+fn greeter = return_fn();
+greeter(); 
+
+```
+**Output:**
+```
+hi
+```
+### Function and Scoping
 ```yap
 def changeVar(int x) -> int {
     x = x + 10;
