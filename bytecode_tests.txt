@@ -123,3 +123,85 @@ numbers.delete(0);
 int x = spill();
 yap(x);
 
+###########################functions
+def square(int n) -> int {
+    yeet n * n
+}
+yap(square(4));  # Expected Output: 16
+
+yap("test_no_2");
+# Function to check if a number is even (without using %)
+def isEven(int n) -> int {
+    if ((n / 2) * 2 == n) {
+        yeet 1
+    }
+    yeet 0
+}
+yap(isEven(10));  # Expected Output: 1
+yap(isEven(7));   # Expected Output: 0
+
+def getArray(int n) -> int[] {
+    yeet [1, 2, 3, 4, 5]
+}
+yap(getArray(5)); 
+
+def emptyArray() -> int[] {
+    yeet []
+}
+yap(emptyArray());
+
+def generateArray(int n) -> int[] {
+    if (n <= 0) {
+        yeet []
+    }
+    int[] arr = [];
+    for (int i = 0; i < n; i = i + 1) {
+        arr.append(i * 3);
+    }
+    yeet arr
+}
+yap(generateArray(5));
+
+def doubleArray(int [] arr) -> int [] {
+    for (int i = 0; i < 3; i = i + 1) {
+        arr[i] = arr[i] * 2;
+    }
+    yeet arr
+}
+int[] a = [1, 2, 3];
+yap(doubleArray(a)); 
+
+def modifyArray(int[] arr) {
+    arr[1] = 100;
+}
+int[] arrTest = [10, 20, 30];
+modifyArray(arrTest);
+yap(arrTest); 
+
+def createArray(int n) -> int[] {
+    int[] res = [];
+    for (int i = 0; i < n; i = i + 1) {
+        res.append(i);
+    }
+    yeet res
+}
+int[] newArr = createArray(4);
+
+def add(int a, int b) -> int {
+    yeet a + b
+}
+def multiply(int x, int y) -> int {
+    yeet x * y
+}
+yap(multiply(add(2, 3), 4));
+
+def multiply(int x, int y) -> int {
+    yeet x * y
+}
+
+def square(int x) -> int {
+    yeet multiply(x, x)
+}
+
+yap(square(5));
+

@@ -43,6 +43,8 @@ class AssemblyGenerator:
         self.symbol_table = {}
         self.break_labels=[]
         self.continue_labels=[]
+        self.function_table = {}  # Track function definitions
+        self.current_function = None  # Track current function context
 
     def emit(self, instruction, *args):
         """Generate a formatted assembly instruction."""
@@ -84,11 +86,19 @@ class AssemblyGenerator:
             self.emit(Opcode.PUSH, expr.val)
         elif isinstance(expr, Variable):
             var_loc = self.get_var_location(expr.val)
-            self.emit(Opcode.LOAD, var_loc)
+            
+            # Check if this is a function reference
+            if expr.val in self.function_table:
+                # For function references, push the function name instead of loading a value
+                self.emit(Opcode.PUSH, expr.val)
+            else:
+                # For regular variables, load the value
+                self.emit(Opcode.LOAD, var_loc)
+                
         elif isinstance(expr, Parenthesis):
             self.generate_expression(expr.expr)
         elif isinstance(expr, Input):
-            self.emit(Opcode.INPUT, expr.type)  # Emit input instruction  
+            self.emit(Opcode.INPUT)  # Emit input instruction  
         elif isinstance(expr, ArrayAccess):  # Handling numbers[2]
             self.generate_expression(expr.array)  # Load array
             self.generate_expression(expr.index)  # Push index
@@ -180,7 +190,7 @@ class AssemblyGenerator:
             self.generate_declaration(stmt)
         elif isinstance(stmt, Assignment):
             var_loc = self.get_var_location(stmt.name)
-            self.generate_expression(stmt.value)  
+            self.generate_statement(stmt.value)  
             self.emit(Opcode.STORE, var_loc)
         elif isinstance(stmt, ArrayAssignment):  
             self.generate_expression(stmt.array)  # Load array
@@ -189,7 +199,7 @@ class AssemblyGenerator:
             self.emit(Opcode.STORE_INDEX)  # Store value at index
         elif isinstance(stmt, Print):
             for value in stmt.values:
-                self.generate_expression(value)  
+                self.generate_statement(value)  
                 self.emit(Opcode.PRINT)
 
         elif isinstance(stmt, Cond):
@@ -208,15 +218,26 @@ class AssemblyGenerator:
             self.emit(Opcode.JMP, self.continue_labels[-1])
 
         elif isinstance(stmt, FunctionCall):
-            for arg in stmt.params:
-                self.generate_expression(arg)
-            self.emit(Opcode.CALL, stmt.name)
+            self.generate_function_call(stmt)
 
         elif isinstance(stmt, Function):
-            self.emit(Opcode.CALL, stmt.name)
+            self.generate_function(stmt)
 
         elif isinstance(stmt, Return):
-            self.generate_expression(stmt.value) 
+            if isinstance(stmt.value, Array):
+            # Create a new array
+                self.emit(Opcode.NEWARRAY, "temp")
+                
+                # Push each element onto the stack
+                for element in stmt.value.elements:
+                    self.generate_statement(element)
+                
+                # Create the array from stack items
+                self.emit(Opcode.CREATE_LIST, len(stmt.value.elements))
+            else:
+                # For non-array return values
+                self.generate_statement(stmt.value)
+            
             self.emit(Opcode.RETURN)
 
         else:
@@ -303,16 +324,20 @@ class AssemblyGenerator:
     def generate_declaration(self, decl):
         """Convert AST variable declarations into bytecode"""
         var_loc = self.get_var_location(decl.name)
-        if isinstance(decl.value, Array):
+        if decl.type == 'fn':
+            # For function type declarations, handle specially
+            self.generate_expression(decl.value)  # This will push the function name
+            self.emit(Opcode.STORE, var_loc)
+        elif isinstance(decl.value, Array):
             self.emit(Opcode.NEWARRAY, decl.name)  # Allocate array space
 
             for element in decl.value.elements:
-                self.generate_expression(element)  # Push each element onto the stack
+                self.generate_statement(element)  # Push each element onto the stack
             
             self.emit(Opcode.CREATE_LIST, len(decl.value.elements))  # Create list from stack items
             self.emit(Opcode.STORE, var_loc)  # Store the array in the variable
         else:
-            self.generate_expression(decl.value)
+            self.generate_statement(decl.value)
             self.emit(Opcode.STORE, var_loc)
 
     def generate_array_access(self, array_access):
@@ -332,8 +357,8 @@ class AssemblyGenerator:
     def generate_array_append(self, append_node):
         """Generate bytecode for appending to an array"""
         array_loc = self.get_var_location(append_node.array.val)
-        self.generate_expression(append_node.value)  # Push value to append
-        self.emit(Opcode.LOAD, array_loc)           # Load array
+        self.emit(Opcode.LOAD, array_loc)           # Load array first
+        self.generate_expression(append_node.value)  # Then push value to append
         self.emit(Opcode.APPEND_INDEX)              # Append value to array
     
     def generate_array_delete(self, delete_node):
@@ -347,9 +372,73 @@ class AssemblyGenerator:
         """Print generated assembly code"""
         for line in self.instructions:
             print(line)
+            
+    def generate_function(self, stmt):
+        """Generate assembly for function definition"""
+        # Store function name
+        func_name = stmt.name
+        
+        # Create a label for the function
+        func_label = self.generate_label()
+        
+        # Save the current symbol table
+        old_symbol_table = self.symbol_table.copy()
+        
+        # Reset the symbol table for the function scope
+        self.symbol_table = {}
+        
+        # Pre-allocate locations for parameters
+        param_locations = []
+        for param_type, param_name in stmt.params:
+            param_loc = self.get_var_location(param_name)
+            param_locations.append(param_name)
+        
+        self.function_table[func_name] = {
+            'label': func_label,
+            'params': param_locations,
+            'return_type': stmt.return_type if hasattr(stmt, 'return_type') else None
+        }
+        
+        # Jump past the function definition during normal execution
+        end_func_label = self.generate_label()
+        self.emit(Opcode.JMP, end_func_label)
+        
+        # Function entry point
+        self.emit(f"{func_label}:")
+        
+        # Save current function context
+        prev_function = self.current_function
+        self.current_function = func_name
+        
+        # Generate code for function body
+        self.generate_statement(stmt.body)
+        
+        # If no explicit return at the end, add one with None value
+        if not isinstance(stmt.body, Return) and not (
+                isinstance(stmt.body, Sequence) and 
+                stmt.body.statements and 
+                isinstance(stmt.body.statements[-1], Return)):
+            self.emit(Opcode.PUSH, None)  # Push None as default return value
+            self.emit(Opcode.RETURN)
+        
+        # Restore previous function context
+        self.current_function = prev_function
+        
+        # Restore the previous symbol table
+        self.symbol_table = old_symbol_table
+        
+        # End of function definition
+        self.emit(f"{end_func_label}:")
 
-
-# Example usage:
+    def generate_function_call(self, call_node):
+        """Generate assembly for function call"""
+        # Push arguments onto stack in order
+        for arg in call_node.params:
+            self.generate_statement(arg)
+        
+        # Call the function
+        self.emit(Opcode.CALL, call_node.name)
+        
 
 with open('sample_code.yap', 'r', encoding='utf-8') as file:
         source_code = file.read()
@@ -357,7 +446,7 @@ ast = parse(source_code)
 print(ast)
 generator = AssemblyGenerator()
 generator.generate(ast)
-
+print(generator.function_table)
 # Print human-readable assembly
 generator.print_assembly()
 
