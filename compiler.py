@@ -28,8 +28,8 @@ except IOError as e:
 
 # print(list(lex(code)))
 ast = parse(code)
-# checker = TypeChecker()
-# checker.visit(ast)
+checker = TypeChecker()
+checker.visit(ast)
 try:
     result = e(ast)
     # result

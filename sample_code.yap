@@ -6,8 +6,8 @@ def apply(fn f, int x) -> int{
     yeet f(x)
 }
 
- string y= apply(double,5);  
- yap(y);
+int y= apply(double,5);  
+yap(y);
 
 # def closure_func(int x) -> fn {
 #     def f(int y)->int{
