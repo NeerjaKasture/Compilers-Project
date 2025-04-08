@@ -418,3 +418,41 @@ yap(5&3);
 yap(5|3);
 yap(~~3);
 
+yap("========== stack test cases ===========");
+stack<int> s1;
+s1.stackPush(5);
+yap(s1.top());
+s1.stackPop();
+s1.stackPush(10);
+s1.stackPush(20);
+yap(s1.top()); 
+
+stack<string> s2;
+s2.stackPush("hello");
+s2.stackPush("world");
+yap(s2.top()); 
+s2.stackPop();
+yap(s2.top());
+
+stack<int> s3;
+for(int i = 0; i < 5; i = i + 1) {
+    s3.stackPush(i);
+}
+for(int i = 0; i < 5; i = i + 1) {
+    yap(s3.top());  
+    s3.stackPop();
+}
+
+yap("======== Queue test cases =========");
+queue<int> q1;
+q1.queuePush(1);
+q1.queuePush(2);
+q1.queuePush(3);
+yap(q1.first()); 
+q1.queuePop();
+yap(q1.first());
+
+queue<int> q2;
+int x = spill();  
+q2.queuePush(x);
+yap(q2.first());

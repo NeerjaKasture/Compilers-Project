@@ -286,10 +286,11 @@ def parse(s: str) -> AST:
                         # Fall back to the last meaningful token for location info
                         raise ParseError("Unexpected end of input, expected ')'", last_token)
 
+                    last_token = t.peek(None)
                     # Checking queue operations
                     if name.endswith(".stackPush"):
                         if len(args) != 1:
-                            raise ParseError(f"Stack push expects exactly 1 argument, got {len(args)}")
+                            raise ParseError(f"Stack push expects exactly 1 argument, got {len(args)}", last_token)
                         stack_name = name.split(".")[0]
                         return StackPush(stack_name, args[0])
 
@@ -303,7 +304,7 @@ def parse(s: str) -> AST:
                     
                     if name.endswith(".queuePush"):
                         if len(args) != 1:
-                            raise ParseError(f"Queue push expects exactly 1 argument, got {len(args)}")
+                            raise ParseError(f"Queue push expects exactly 1 argument, got {len(args)}", last_token)
                         queue_name = name.split(".")[0]
                         return QueuePush(queue_name, args[0])
 
@@ -674,6 +675,51 @@ def parse(s: str) -> AST:
     def parse_declaration():
         try:
             match t.peek(None):
+                case KeywordToken("queue"):
+                    next(t)  # Consume 'queue'
+                    if t.peek(None) != OperatorToken('<'):
+                        raise ParseError("Expected '<' after 'queue'", t.peek())
+                    next(t)  # Consume '<'
+                    if not isinstance(t.peek(None), TypeToken):
+                        raise ParseError("Expected type after '<'", t.peek())
+                    element_type = next(t).val
+
+                    if t.peek(None) != OperatorToken('>'):
+                        raise ParseError("Expected '>' after queue element type", t.peek())
+                    next(t)
+
+                    if not isinstance(t.peek(None), VariableToken):
+                        raise ParseError("Expected queue name after '>'", t.peek())
+                    queue_name = next(t).val
+                    if queue_name in keywords:
+                        raise InvalidVariableNameError(queue_name)
+                    if t.peek(None) != SymbolToken(";"):
+                        raise ParseError("Expected ';' after queue declaration", t.peek())
+                    
+                    return QueueDeclaration(element_type, queue_name)
+                
+                case KeywordToken("stack"):
+                     next(t)  # Consume 'stack'
+                     if t.peek(None) != OperatorToken('<'):
+                         raise ParseError("Expected '<' after 'stack'", t.peek())
+                     next(t)  # Consume '<'
+                     if not isinstance(t.peek(None), TypeToken):
+                         raise ParseError("Expected type after '<'", t.peek())
+                     element_type = next(t).val
+ 
+                     if t.peek(None) != OperatorToken('>'):
+                         raise ParseError("Expected '>' after stack element type", t.peek())
+                     next(t)
+ 
+                     if not isinstance(t.peek(None), VariableToken):
+                         raise ParseError("Expected stack name after '>'", t.peek())
+                     stack_name = next(t).val
+                     if stack_name in keywords:
+                         raise InvalidVariableNameError(stack_name)
+                     if t.peek(None) != SymbolToken(";"):
+                         raise ParseError("Expected ';' after stack declaration", t.peek())
+                     
+                     return StackDeclaration(element_type, stack_name)
                 case TypeToken(var_type):
                     if var_type not in datatypes.keys():
                         raise TypeError("valid type", var_type)

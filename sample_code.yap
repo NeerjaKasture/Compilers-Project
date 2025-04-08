@@ -1,1 +1,3 @@
-yap("hi")
+def func {
+    yap("nothing");
+}
