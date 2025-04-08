@@ -1,16 +1,13 @@
-
-def inc(int x) -> int {
-    yeet x + 1
+def double(int x) -> int {
+     yeet x * 2
+}
+ 
+def apply(fn f, int x) -> int{
+    yeet f(x)
 }
 
-def square(int x) -> int {
-    yeet x * x
-}
-
-fn[] ops = [inc, square];
-yap(ops[0](5));  # Expect 6
-yap(ops[1](3));  # Expect 9
-
+ string y= apply(double,5);  
+ yap(y);
 
 # def closure_func(int x) -> fn {
 #     def f(int y)->int{
