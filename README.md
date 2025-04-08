@@ -121,7 +121,7 @@ The AssemblyGenerator converts parsed abstract syntax trees (ASTs) into bytecode
 - **Arithmetic & Logic**: `ADD`, `SUB`, `MUL`, `DIV`, `POW` (power), `NEG` (negation), `CMP_LT`, `CMP_GT`, `CMP_EQ`, `CMP_NEQ`.
 - **Control Flow**: `JMP` (unconditional jump), `JZ` (jump if zero), `JNZ` (jump if nonzero), `CALL` (function call), `RETURN`.
 - **Variable Management**: `STORE` (assign value to a variable), `LOAD` (retrieve value).
-- **Array Operations**: `NEWARRAY` (allocate array), `LOAD_INDEX` (fetch element), `STORE_INDEX` (update element), `APPEND_INDEX` (append value), `DELETE_INDEX` (remove element).
+- **Array Operations**: `NEWARRAY` (allocate array), `LOAD_INDEX` (fetch element), `STORE_INDEX` (update element), `APPEND_INDEX` (append value), `DELETE_INDEX` (remove element) , `CREATE_LIST` (make an array of 'n' elements).
 - **System Calls**: `PRINT` (print value), `INPUT` (read input), `EXIT` (terminate execution).
 
 # How to Run the Code
