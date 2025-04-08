@@ -26,7 +26,7 @@ Compilers-Project
 
 ### Data Types
 - Primitive: `int`, `float`, `string`, `bool`
-- Composite: Arrays (`int[]`, `float[]`, `string[]`, `bool[]`), stacks, queues
+- Composite: Arrays (`int[]`, `float[]`, `string[]`, `bool[]`), stacks, queues, functions (fn)
 
 ### Operators
 - Arithmetic: `+`, `-`, `*`, `/`, `^`, `%`
