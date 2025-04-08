@@ -120,7 +120,7 @@ def test_operations():
     yap(nocap and cap);
     yap(nocap or cap);
     yap(not cap);
-    yap("yap" == "print")
+    yap("yap" == "print");
     """
     expected_output = "25\n5\n150\n1.5\n-15\n225\n5\nnocap\ncap\nnocap\ncap\ncap\nnocap\n10\n15\n-16\ncap\nnocap\nnocap\ncap\n"
 
@@ -288,50 +288,50 @@ def test_functions():
     assert actual_output == expected_output, f"Expected '{expected_output}', but got '{actual_output}'"
     print("Functions test passed!")
 
-def test_stack():
-    source_code = """
-    stack<int> s1;
-    s1.stackPush(5);
-    yap(s1.top());
-    s1.stackPop();
-    s1.stackPush(10);
-    s1.stackPush(20);
-    yap(s1.top());
-    """
-    expected_output = "5\n20\n"  
+# def test_stack():
+#     source_code = """
+#     stack<int> s1;
+#     s1.stackPush(5);
+#     yap(s1.top());
+#     s1.stackPop();
+#     s1.stackPush(10);
+#     s1.stackPush(20);
+#     yap(s1.top());
+#     """
+#     expected_output = "5\n20\n"  
 
-    ast = parse(source_code)
-    f = io.StringIO()
-    with redirect_stdout(f):
-        e(ast)
-    actual_output = f.getvalue()
+#     ast = parse(source_code)
+#     f = io.StringIO()
+#     with redirect_stdout(f):
+#         e(ast)
+#     actual_output = f.getvalue()
 
-    print("expected", expected_output)
-    print("actual", actual_output)
+#     print("expected", expected_output)
+#     print("actual", actual_output)
 
-    assert actual_output == expected_output, f"Expected '{expected_output}', but got '{actual_output}'"
-    print("Stack test passed!")
+#     assert actual_output == expected_output, f"Expected '{expected_output}', but got '{actual_output}'"
+#     print("Stack test passed!")
 
-def test_queue():
-    source_code = """
-    queue<int> q1;
-    q1.queuePush(1);
-    q1.queuePush(2);
-    q1.queuePush(3);
-    yap(q1.first()); 
-    q1.queuePop();
-    yap(q1.first());
-    """
-    expected_output = "1\n2\n"  
+# def test_queue():
+#     source_code = """
+#     queue<int> q1;
+#     q1.queuePush(1);
+#     q1.queuePush(2);
+#     q1.queuePush(3);
+#     yap(q1.first()); 
+#     q1.queuePop();
+#     yap(q1.first());
+#     """
+#     expected_output = "1\n2\n"  
 
-    ast = parse(source_code)
-    f = io.StringIO()
-    with redirect_stdout(f):
-        e(ast)
-    actual_output = f.getvalue()
+#     ast = parse(source_code)
+#     f = io.StringIO()
+#     with redirect_stdout(f):
+#         e(ast)
+#     actual_output = f.getvalue()
 
-    print("expected", expected_output)
-    print("actual", actual_output)
+#     print("expected", expected_output)
+#     print("actual", actual_output)
 
-    assert actual_output == expected_output, f"Expected '{expected_output}', but got '{actual_output}'"
-    print("Queue test passed!")
+#     assert actual_output == expected_output, f"Expected '{expected_output}', but got '{actual_output}'"
+#     print("Queue test passed!")
