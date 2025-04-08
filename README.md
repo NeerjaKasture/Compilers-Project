@@ -194,7 +194,7 @@ The current test suite `testing.yap` gives **76% line coverage** and **72% branc
 # Work Distribution
 
 - **Neerja** - Variables, Functions and Recursion, Strings, static typechecking, Euler problems
-- **Anura** - Loops, Recursion, bytecode and checking, Arithmetic, if-elif-else, Blocks
+- **Anura** -  Arithmetic, if-elif-else, Blocks, Loops, Recursion, bytecode and checking
 - **Saloni** - Arrays, functions to support arrays, logical operations (bitwise), testing files, coverage calculations
 - **Siri** - Input statements for the data types, Types of Errors, Test cases, stacks
 - **Srijahnavi** - `yap` statement for all data types, Arrays, Errors, Test cases
