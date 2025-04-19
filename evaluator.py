@@ -357,6 +357,7 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
                 raise TypeError("Concat can only be used with String")
 
             return left_val + right_val 
+        
         case Print(values):
             results = []
             for value in values:
@@ -371,51 +372,55 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
             # print(*results)  # Changed to use default print behavior with newline
            
         case Array(elements):
-            return [e(element, env, types) for element in elements]
+            return [e(element, env, types) for element in elements]            
         case ArrayAccess(array, index):
             array_val = e(array, env, types)
             index_val = e(index, env, types)
-            if not isinstance(array_val, (list,str)):
-                raise TypeError("Only arrays and strings can be indexed")
+            if not isinstance(array_val, (list,str,dict)):
+                raise TypeError(f"Indexing cannot be used with type {type(array_val).__name__}")
             return array_val[index_val]
+        
         case ArrayAssignment(array, index, value):
             array_val = e(array, env, types)
             index_val = e(index, env, types)
             value_val = e(value, env, types)
-            if not isinstance(array_val, (list,str)):
-                raise TypeError("Array assignment can only be used with arrays")
-            
+            if not isinstance(array_val, (list,str,dict)):
+                raise TypeError(f"Assignment cannot be used with type {type(array_val).__name__}")
             array_val[index_val] = value_val
             return value_val
+        
         case ArrayAppend(array, value):
             array_name = array.val  # Get the variable name
-            if array_name in env and isinstance(env[array_name], list):
+            if array_name in env and isinstance(env[array_name], (list)):
                 env[array_name].append(e(value, env, types))  # Append the new value
                 return env[array_name]  # Return the updated array
             else:
                 raise TypeError(f"Cannot append to non-array type: {array_name}")
+            
         case ArrayDelete(array, index):
             array_name = array.val  # Get the variable name
-            if array_name in env and isinstance(env[array_name], list):
+            if array_name in env and isinstance(env[array_name], (list,dict)):
                 index_val = e(index, env, types)  # Evaluate the index
-                if not isinstance(index_val, int):
-                    raise TypeError(f"Array index must be an integer, got {type(index_val).__name__}")
-                if index_val < 0 or index_val >= len(env[array_name]):
-                    raise IndexError(f"Index {index_val} out of bounds for array '{array_name}'")
                 
                 del env[array_name][index_val]  # Remove the element at index
                 return env[array_name]  # Return updated array
             else:
                 raise TypeError(f"Cannot delete from non-array type: {array_name}")
+            
         case ArrayLength(array):
             array_name = array.val  # Get the variable name
-            if array_name in env and isinstance(env[array_name], list):
+            if array_name in env and isinstance(env[array_name], (list,str,dict)):
                 return len(env[array_name])  # Return the length of the array
             else:
                 raise TypeError(f"Cannot get length of non-array type: {array_name}")
+            
+        case HashMap(name,key_type, value_type):
+            env[name] = {}  
+            types[name] = f"hashmap<{key_type}, {value_type}>"
+            return None     
+
+            
         case StackDeclaration(element_type, name):
-            if name in env:
-                raise NameError(f"Stack '{name}' already declared")
             env[name] = Stack()  # Initialize an empty stack
             types[name] = f"stack<{element_type}>"
             return None
@@ -452,8 +457,6 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
             return stack.top()
         
         case QueueDeclaration(element_type, name):
-            if name in env:
-                raise NameError(f"Queue '{name}' already declared")
             env[name] = Queue()  # Initialize an empty queue
             types[name] = f"queue<{element_type}>"
             return None

@@ -184,6 +184,13 @@ class QueuePop(AST):
 class QueueFirst(AST):
     queue_name: str
 
+@dataclass
+class HashMap(AST):
+    name: str
+    index_type: str
+    value_type: str
+
+
 inside_function=False
 
 def parse(s: str) -> AST:
@@ -325,6 +332,8 @@ def parse(s: str) -> AST:
                         if len(args) != 0:
                             raise ParseError("len function takes no arguments", t.peek())
                         return ArrayLength(Variable(array_name))
+                    
+                    
                     
                     return FunctionCall(name, args)
                 case _:
@@ -704,6 +713,35 @@ def parse(s: str) -> AST:
                          raise ParseError("Expected ';' after stack declaration", t.peek())
                      
                      return StackDeclaration(element_type, stack_name)
+                
+                case KeywordToken("hashmap"):
+                    next(t)  # Consume 'hashmap'
+                    if t.peek(None) != OperatorToken('<'):
+                        raise ParseError("Expected '<' after 'hashmap'", t.peek())
+                    next(t)  # Consume '<'
+                    if not isinstance(t.peek(None), TypeToken):
+                        raise ParseError("Expected key type after '<'", t.peek())
+                    key_type = next(t).val
+                    if t.peek(None) != SymbolToken(','):
+                        raise ParseError("Expected ',' after key type", t.peek())
+                    next(t)  # Consume ','
+                    if not isinstance(t.peek(None), TypeToken):
+                        raise ParseError("Expected value type after ','", t.peek())
+                    value_type = next(t).val
+                    if t.peek(None) != OperatorToken('>'):
+                        raise ParseError("Expected closing '>' ", t.peek())
+                    next(t)  # Consume '>'
+
+                    if not isinstance(t.peek(None), VariableToken):
+                        raise ParseError("Expected hashmap name after '>'", t.peek())
+                    hashmap_name = next(t).val
+                    if hashmap_name in keywords:
+                        raise InvalidVariableNameError(hashmap_name)
+                    if t.peek(None) != SymbolToken(";"):
+                        raise ParseError("Expected ';' after hashmap declaration", t.peek())
+                    
+                    return HashMap(hashmap_name,key_type, value_type)
+                    
                 
                 case TypeToken(var_type):
                     if var_type not in datatypes.keys():

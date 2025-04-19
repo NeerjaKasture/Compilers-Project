@@ -456,3 +456,21 @@ yap("========== stack test cases ===========");
  int x = spill();  
  q2.queuePush(x);
  yap(q2.first());
+
+yap("======== Hashmap test cases =========");
+
+hashmap < string , string > m;
+m["a"] = "apple";
+m["b"] = "banana";
+yap(m["a"]);         
+yap(m["b"]);       
+yap(m.len());      
+m.delete("a");
+yap(m.len());       
+
+hashmap < int , bool > flags;
+flags[1] = nocap;
+flags[2] = cap;
+yap(flags[1]);         
+yap(flags[2]);        
+yap(flags.len());     

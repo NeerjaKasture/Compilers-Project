@@ -142,9 +142,7 @@ class TypeChecker:
                         return 'undefined'  # Or you could track the return type later
                     except NameError:
                         raise NameError(f'Function {node.name} not declared')
-    
-                    
-            
+              
             case 'Sequence':
                 last_type = None
                 return_val = None
@@ -154,10 +152,7 @@ class TypeChecker:
                         return_val = last_type
                     if return_val is not None:
                         return return_val
-                
-                    
-                
-
+    
             case 'Cond':  
                 # Ensure all conditions are boolean
                 if node.If:
@@ -217,50 +212,147 @@ class TypeChecker:
                 return f"{first_type}[]"
             
             case "ArrayAccess":
-                array_type = self.visit(node.array)
+                collection_type = self.visit(node.array)
+
+                # Check for array
+                if "[]" in collection_type:
+                    element_type = collection_type.replace("[]", "")
+
+                    index_type = self.visit(node.index)
+                    if index_type != "int":
+                        raise TypeError(f"Array index must be of type int, but got {index_type}")
+                    
+                    return element_type
+
+                # Check for hashmap
+                elif collection_type.startswith("hashmap<"):
+                    key_type_expected, value_type = collection_type[8:-1].split(",")
+
+                    index_type = self.visit(node.index)
+                    if index_type.strip() != key_type_expected.strip():
+                        raise TypeError(f"Hashmap key must be of type {key_type_expected}, but got {index_type}")
+
+                    return value_type.strip()
                 
-                # Ensure it is an array type
-                if "[]" not in array_type and array_type!="string":
-                    raise TypeError(f"Cannot index non-array type {array_type}")
+                elif collection_type == "string":
+                    index_type = self.visit(node.index)
+                    if index_type != "int":
+                        raise TypeError(f"String index must be of type int, but got {index_type}")
 
-                # Extract the element type (e.g., "int[]" → "int")
-                element_type = array_type.replace("[]", "")
+                    return "string"
 
-                # Ensure the index is an integer
-                index_type = self.visit(node.index)
-                if index_type != "int":
-                    raise TypeError(f"Array index must be of type int, but got {index_type}")
+                # Not indexable
+                else:
+                    raise TypeError(f"Cannot index non-array/hashmap type {collection_type}")
 
-                return element_type  
+           
+            case "ArrayAppend":
+                container_type = self.visit(node.array)
+
+                # Array append
+                if "[]" in container_type:
+                    element_type = container_type.replace("[]", "")
+                    value_type = self.visit(node.value)
+
+                    if value_type != element_type:
+                        raise TypeError(f"Cannot append value of type {value_type} to array of {element_type}")
+
+                    return container_type
             
+            case "ArrayDelete":
+                collection_type = self.visit(node.array)
+
+                # Array delete: delete by index
+                if "[]" in collection_type:
+                    index_type = self.visit(node.index)
+                    if index_type != "int":
+                        raise TypeError(f"Array index must be of type int, but got {index_type}")
+                    return collection_type
+
+                # Map delete: delete by key
+                elif collection_type.startswith("hashmap<"):
+                    key_type_expected, value_type = collection_type[8:-1].split(",")
+                    
+                    key_type = self.visit(node.index)
+
+                    if key_type != key_type_expected:
+                        raise TypeError(f"Key type mismatch in map delete: expected {key_type_expected}, got {key_type}")
+                    return collection_type
+
+                else:
+                    raise TypeError(f"Cannot delete from non-array/map type: {collection_type}")
+
             case "ArrayAssignment":
-                array_type = self.visit(node.array)
+                collection_type = self.visit(node.array)
+
+                # Array case
+                if "[]" in collection_type:
+                    element_type = collection_type.replace("[]", "")
+
+                    index_type = self.visit(node.index)
+                    if index_type != "int":
+                        raise TypeError(f"Array index must be of type int, but got {index_type}")
+
+                    value_type = self.visit(node.value)
+                    if value_type != element_type:
+                        raise TypeError(f"Type mismatch: array expects {element_type}, but got {value_type}")
+
+                    return value_type
+
+                # Hashmap case
+                elif collection_type.startswith("hashmap<"):
+                    key_type_expected, value_type_expected = collection_type[8:-1].split(",")
+
+                    index_type = self.visit(node.index)
+                    if index_type.strip() != key_type_expected.strip():
+                        raise TypeError(f"Hashmap key must be of type {key_type_expected}, but got {index_type}")
+
+                    value_type = self.visit(node.value)
+                    if value_type.strip() != value_type_expected.strip():
+                        raise TypeError(f"Type mismatch: hashmap expects {value_type_expected}, but got {value_type}")
+
+                    return value_type
                 
-                if "[]" not in array_type and array_type!="string":
-                    raise TypeError(f"Cannot assign to non-array type {array_type}")
+                elif collection_type == "string":
+                    index_type = self.visit(node.index)
+                    if index_type != "int":
+                        raise TypeError(f"String index must be of type int, but got {index_type}")
 
-                element_type = array_type.replace("[]", "")
+                    value_type = self.visit(node.value)
+                    if value_type != "string":
+                        raise TypeError(f"Type mismatch: string expects string, but got {value_type}")
 
-                index_type = self.visit(node.index)
-                if index_type != "int":
-                    raise TypeError(f"Array index must be of type int, but got {index_type}")
+                    return value_type
 
-                value_type = self.visit(node.value)
-                if value_type != element_type:
-                    raise TypeError(f"Type mismatch: array '{node.array.val}' expects {element_type}, but got {value_type}")
+                else:
+                    raise TypeError(f"Cannot assign to non-array/hashmap type {collection_type}")
 
-                return value_type  
             
             case "ArrayLength":
-                array_type = self.visit(node.array)
-                
-                if "[]" not in array_type and array_type!="string":
-                    raise TypeError(f"Cannot get length of non-array type {array_type}")
+                collection_type = self.visit(node.array)
 
-                return "int"
+                if "[]" in collection_type or collection_type == "string":
+                    return "int"
+
+                elif collection_type.startswith("hashmap<"):
+                    return "int"
+
+                else:
+                    raise TypeError(f"Cannot get length of non-array/hashmap type {collection_type}")
+
 
             case "Parenthesis":
                 return self.visit(node.expr)
+            
+            case "HashMap":
+                index_type = node.index_type
+                value_type = node.value_type
 
+                if index_type not in ('int', 'string', 'float', 'bool'):
+                    raise TypeError(f"Invalid key type {index_type} for hashmap; only int, string, float, bool are allowed")
+                self.declare_variable(node.name, f"hashmap<{index_type}, {value_type}>")
+
+                return f"hashmap<{index_type}, {value_type}>"
+            
             case _:
                 pass

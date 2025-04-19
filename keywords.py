@@ -1,4 +1,4 @@
-keywords = ["if", "elif", "else", "nocap", "cap", "yap", "concat", "while", "for", "and", "or", "not", "def", "yeet", "void", "break", "continue","spill","fn", "stack", "queue"]
+keywords = ["if", "elif", "else", "nocap", "cap", "yap", "concat", "while", "for", "and", "or", "not", "def", "yeet", "void", "break", "continue","spill","fn", "stack", "queue","hashmap"]
 
 from dataclasses import dataclass
 

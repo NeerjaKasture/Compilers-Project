@@ -28,11 +28,13 @@ except IOError as e:
 
 # print(list(lex(code)))
 ast = parse(code)
+print(ast)
 checker = TypeChecker()
 checker.visit(ast)
-try:
-    result = e(ast)
-    # result
-except Exception as e:
-    print(f"Error : {e}")
-    sys.exit(1)
+result = e(ast)
+# try:
+#     result = e(ast)
+#     # result
+# except Exception as e:
+#     print(f"Error : {e}")
+#     sys.exit(1)
