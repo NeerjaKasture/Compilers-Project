@@ -1,5 +1,6 @@
 from enum import Enum
 from parser import *
+from stack_vm import *
 
 class Opcode(Enum):
     """Enum for stack-based VM opcodes (standardized)"""
@@ -23,8 +24,7 @@ class Opcode(Enum):
     RETURN = 0x12     # Return from function
     PRINT = 0x13      # System call: Print (handled externally)
     NEWARRAY = 0x14   # Allocate new array
-    AASTORE = 0x15    # Store into array
-    AALOAD = 0x16     # Load from array
+    NEWLINE= 0x15
     LNOT = 0x17       # Logical NOT
     DUP = 0x18        # Duplicate top of stack
     INPUT = 0x19      # System call: Read user input
@@ -35,6 +35,9 @@ class Opcode(Enum):
     STORE_INDEX = 0x1E
     APPEND_INDEX = 0x1F
     DELETE_INDEX = 0x20
+    MOD = 0x16
+    FLR_DIV = 0x21
+    
 class AssemblyGenerator:
     def __init__(self):
         self.instructions = []
@@ -47,13 +50,14 @@ class AssemblyGenerator:
         self.current_function = None  # Track current function context
 
     def emit(self, instruction, *args):
-        """Generate a formatted assembly instruction."""
-        args_str = " ".join(map(str, args)) if args else ""
+        """Generate a tuple-based instruction with instruction index."""
         if isinstance(instruction, str):  # Handle labels
-            self.instructions.append(f"{instruction}:")
+            self.instructions.append((f"{instruction}:",))  # Single-element tuple for labels
         else:
-            self.instructions.append(f"{self.instruction_counter}: {instruction.name:<10} {args_str}")
+            # print((self.instruction_counter, instruction.name, instruction.value), args)
+            self.instructions.append(((self.instruction_counter, instruction.name, instruction.value) , args))
             self.instruction_counter += 1
+
 
     def generate_label(self):
         """Generate a unique label for jumps"""
@@ -69,14 +73,11 @@ class AssemblyGenerator:
 
     def generate(self, ast):
         """Generate assembly for an AST"""
-        if isinstance(ast, Sequence):
-            for stmt in ast.statements:
-                self.generate_statement(stmt)
-        else:
-            self.generate_statement(ast)
+        self.generate_statement(ast)
         self.emit(Opcode.EXIT)  # End of program
+        return  self.instructions, self.function_table 
 
-    def generate_expression(self, expr):
+    def generate_statement(self, expr):
         """Convert AST expressions into bytecode"""
         if isinstance(expr, Number):
             self.emit(Opcode.PUSH, expr.val)
@@ -96,13 +97,11 @@ class AssemblyGenerator:
                 self.emit(Opcode.LOAD, var_loc)
                 
         elif isinstance(expr, Parenthesis):
-            self.generate_expression(expr.expr)
+            self.generate_statement(expr.expr)
         elif isinstance(expr, Input):
             self.emit(Opcode.INPUT)  # Emit input instruction  
         elif isinstance(expr, ArrayAccess):  # Handling numbers[2]
-            self.generate_expression(expr.array)  # Load array
-            self.generate_expression(expr.index)  # Push index
-            self.emit(Opcode.LOAD_INDEX)
+            self.generate_array_access(expr)
         elif isinstance(expr, ArrayAppend):  # Handle appending in expressions
             self.generate_array_append(expr)
 
@@ -112,12 +111,12 @@ class AssemblyGenerator:
         elif isinstance(expr, BinOp):
             op_map = {
                 "+": Opcode.ADD, "-": Opcode.SUB, "*": Opcode.MUL, "/": Opcode.DIV, "^": Opcode.POW,
-                "<": Opcode.CMP_LT, ">": Opcode.CMP_GT, "==": Opcode.CMP_EQ, "!=": Opcode.CMP_NEQ,
+                "<": Opcode.CMP_LT, ">": Opcode.CMP_GT, "==": Opcode.CMP_EQ, "!=": Opcode.CMP_NEQ, "%":Opcode.MOD, "//": Opcode.FLR_DIV
             }
 
             if expr.op == "and":
                 # Generate code for the left operand
-                self.generate_expression(expr.left)
+                self.generate_statement(expr.left)
                 
                 # Create a label to jump to if the left operand is false
                 end_label = self.generate_label()
@@ -132,14 +131,14 @@ class AssemblyGenerator:
                 self.emit(Opcode.POP)
                 
                 # Generate code for the right operand
-                self.generate_expression(expr.right)
+                self.generate_statement(expr.right)
                 
                 # Mark the end label
                 self.emit(f"{end_label}:")
             
             elif expr.op == "or":
                 # Generate code for the left operand
-                self.generate_expression(expr.left)
+                self.generate_statement(expr.left)
                 
                 # Create a label to jump to if the left operand is true
                 end_label = self.generate_label()
@@ -154,26 +153,26 @@ class AssemblyGenerator:
                 self.emit(Opcode.POP)
                 
                 # Generate code for the right operand
-                self.generate_expression(expr.right)
+                self.generate_statement(expr.right)
                 
                 # Mark the end label
                 self.emit(f"{end_label}:")
             
             elif expr.op == "<=":
-                self.generate_expression(expr.left)
-                self.generate_expression(expr.right)
+                self.generate_statement(expr.left)
+                self.generate_statement(expr.right)
                 self.emit(Opcode.CMP_GT)  # a <= b → !(a > b)
                 self.emit(Opcode.LNOT)
             
             elif expr.op == ">=":
-                self.generate_expression(expr.left)
-                self.generate_expression(expr.right)
+                self.generate_statement(expr.left)
+                self.generate_statement(expr.right)
                 self.emit(Opcode.CMP_LT)  # a >= b → !(a < b)
                 self.emit(Opcode.LNOT)
             
             elif expr.op in op_map:
-                self.generate_expression(expr.left)
-                self.generate_expression(expr.right)
+                self.generate_statement(expr.left)
+                self.generate_statement(expr.right)
                 self.emit(op_map[expr.op])
             
             else:
@@ -181,91 +180,87 @@ class AssemblyGenerator:
 
 
 
-    def generate_statement(self, stmt):
-        """Convert AST statements into bytecode"""
-        if isinstance(stmt, Sequence):
-            for sub_stmt in stmt.statements:
-                self.generate_statement(sub_stmt )
-        elif isinstance(stmt, Declaration):
-            self.generate_declaration(stmt)
-        elif isinstance(stmt, Assignment):
-            var_loc = self.get_var_location(stmt.name)
-            self.generate_statement(stmt.value)  
+        elif isinstance(expr, Sequence):
+            for sub_expr in expr.statements:
+                self.generate_statement(sub_expr )
+        elif isinstance(expr, Declaration):
+            self.generate_declaration(expr)
+        elif isinstance(expr, Assignment):
+            var_loc = self.get_var_location(expr.name)
+            self.generate_statement(expr.value)  
             self.emit(Opcode.STORE, var_loc)
-        elif isinstance(stmt, ArrayAssignment):  
-            self.generate_expression(stmt.array)  # Load array
-            self.generate_expression(stmt.index)  # Push index
-            self.generate_expression(stmt.value)  # Push new value
-            self.emit(Opcode.STORE_INDEX)  # Store value at index
-        elif isinstance(stmt, Print):
-            for value in stmt.values:
+        elif isinstance(expr, ArrayAssignment): 
+            print(":::::", expr)
+            self.generate_array_store(expr)  # Store value at index
+        elif isinstance(expr, Print):
+            for value in expr.values:
                 self.generate_statement(value)  
                 self.emit(Opcode.PRINT)
+            self.emit(Opcode.NEWLINE)
+        elif isinstance(expr, Cond):
+            self.generate_if(expr)
 
-        elif isinstance(stmt, Cond):
-            self.generate_if(stmt)
+        elif isinstance(expr, While):
+            self.generate_while(expr)
 
-        elif isinstance(stmt, While):
-            self.generate_while(stmt)
+        elif isinstance(expr, For):
+            self.generate_for(expr)
 
-        elif isinstance(stmt, For):
-            self.generate_for(stmt)
-
-        elif isinstance(stmt, Break):
+        elif isinstance(expr, Break):
             self.emit(Opcode.JMP, self.break_labels[-1])
 
-        elif isinstance(stmt, Continue):
+        elif isinstance(expr, Continue):
             self.emit(Opcode.JMP, self.continue_labels[-1])
 
-        elif isinstance(stmt, FunctionCall):
-            self.generate_function_call(stmt)
+        elif isinstance(expr, FunctionCall):
+            self.generate_function_call(expr)
 
-        elif isinstance(stmt, Function):
-            self.generate_function(stmt)
+        elif isinstance(expr, Function):
+            self.generate_function(expr)
 
-        elif isinstance(stmt, Return):
-            if isinstance(stmt.value, Array):
+        elif isinstance(expr, Return):
+            if isinstance(expr.value, Array):
             # Create a new array
                 self.emit(Opcode.NEWARRAY, "temp")
                 
                 # Push each element onto the stack
-                for element in stmt.value.elements:
+                for element in expr.value.elements:
                     self.generate_statement(element)
                 
                 # Create the array from stack items
-                self.emit(Opcode.CREATE_LIST, len(stmt.value.elements))
+                self.emit(Opcode.CREATE_LIST, len(expr.value.elements))
             else:
                 # For non-array return values
-                self.generate_statement(stmt.value)
+                self.generate_statement(expr.value)
             
             self.emit(Opcode.RETURN)
 
         else:
-            self.generate_expression(stmt) 
+            self.generate_statement(expr) 
 
         
-    def generate_if(self, stmt):
+    def generate_if(self, expr):
         """Generate assembly for if-else statement with multiple elif support"""
         end_label = self.generate_label()  # Label for the end of the entire if-structure
         
         # Generate code for the initial 'if' condition and body
-        self.generate_expression(stmt.If[0])
+        self.generate_statement(expr.If[0])
         first_elif_or_else_label = self.generate_label()
         self.emit(Opcode.JZ, first_elif_or_else_label)  # Jump to next condition if false
         
-        self.generate_statement(stmt.If[1])
+        self.generate_statement(expr.If[1])
         self.emit(Opcode.JMP, end_label)  # Skip all remaining conditions after executing body
         
         self.emit(f"{first_elif_or_else_label}:")
         
         # Generate code for each 'elif' condition and body
-        if stmt.Elif:
-            for i, (elif_cond, elif_body) in enumerate(stmt.Elif):
-                self.generate_expression(elif_cond)
+        if expr.Elif:
+            for i, (elif_cond, elif_body) in enumerate(expr.Elif):
+                self.generate_statement(elif_cond)
                 
                 # If this is the last elif and there's no else, jump to end if false
                 # Otherwise, jump to the next elif or else
-                next_label = end_label if i == len(stmt.Elif) - 1 and not stmt.Else else self.generate_label()
+                next_label = end_label if i == len(expr.Elif) - 1 and not expr.Else else self.generate_label()
                 
                 self.emit(Opcode.JZ, next_label)  # Jump to next condition if false
                 self.generate_statement(elif_body)
@@ -275,33 +270,33 @@ class AssemblyGenerator:
                     self.emit(f"{next_label}:")
         
         # Generate code for the 'else' body if it exists
-        if stmt.Else:
-            self.generate_statement(stmt.Else)
+        if expr.Else:
+            self.generate_statement(expr.Else)
         
         # This is where execution continues after the if-elif-else structure
         self.emit(f"{end_label}:")
 
 
-    def generate_while(self, stmt):
+    def generate_while(self, expr):
         """Generate assembly for while loops"""
         start_label = self.generate_label()
         end_label = self.generate_label()
         self.break_labels.append(end_label)
         self.continue_labels.append(start_label)
         self.emit(f"{start_label}:")
-        self.generate_expression(stmt.condition)
+        self.generate_statement(expr.condition)
         self.emit(Opcode.JZ, end_label)
 
-        self.generate_statement(stmt.body)
+        self.generate_statement(expr.body)
         self.emit(Opcode.JMP, start_label)
 
         self.emit(f"{end_label}:")
         self.break_labels.pop()
         self.continue_labels.pop()
 
-    def generate_for(self, stmt):
+    def generate_for(self, expr):
         """Generate assembly for for loops"""
-        self.generate_statement(stmt.init)
+        self.generate_statement(expr.init)
 
         start_label = self.generate_label()
         end_label = self.generate_label()
@@ -309,12 +304,12 @@ class AssemblyGenerator:
         self.continue_labels.append(start_label)
         increment_label = self.generate_label()
         self.emit(f"{start_label}:")
-        self.generate_expression(stmt.condition)
+        self.generate_statement(expr.condition)
         self.emit(Opcode.JZ, end_label)
 
-        self.generate_statement(stmt.body)
+        self.generate_statement(expr.body)
         self.emit(f"{increment_label}:")
-        self.generate_statement(stmt.increment)
+        self.generate_statement(expr.increment)
         self.emit(Opcode.JMP, start_label)
 
         self.emit(f"{end_label}:")
@@ -324,9 +319,10 @@ class AssemblyGenerator:
     def generate_declaration(self, decl):
         """Convert AST variable declarations into bytecode"""
         var_loc = self.get_var_location(decl.name)
+        print(decl.value)
         if decl.type == 'fn':
             # For function type declarations, handle specially
-            self.generate_expression(decl.value)  # This will push the function name
+            self.generate_statement(decl.value)  # This will push the function name
             self.emit(Opcode.STORE, var_loc)
         elif isinstance(decl.value, Array):
             self.emit(Opcode.NEWARRAY, decl.name)  # Allocate array space
@@ -342,41 +338,41 @@ class AssemblyGenerator:
 
     def generate_array_access(self, array_access):
         """Handles array indexing (arr[i])"""
-        var_loc = self.get_var_location(array_access.array_name)  
-        self.generate_expression(array_access.index)  # Push index onto stack
+        var_loc = self.get_var_location(array_access.array.val)  
+        self.generate_statement(array_access.index)  # Push index onto stack
         self.emit(Opcode.LOAD_INDEX, var_loc)  # Load element from array
 
     def generate_array_store(self, array_store):
         """Handles writing to an array (arr[i] = value)"""
-        var_loc = self.get_var_location(array_store.array_name)
+        var_loc = self.get_var_location(array_store.array.val)
         
-        self.generate_expression(array_store.index)  # Push index
-        self.generate_expression(array_store.value)  # Push value
+        self.generate_statement(array_store.index)  # Push index
+        self.generate_statement(array_store.value)  # Push value
         self.emit(Opcode.STORE_INDEX, var_loc)  # Store in array
 
     def generate_array_append(self, append_node):
         """Generate bytecode for appending to an array"""
-        array_loc = self.get_var_location(append_node.array.val)
-        self.emit(Opcode.LOAD, array_loc)           # Load array first
-        self.generate_expression(append_node.value)  # Then push value to append
-        self.emit(Opcode.APPEND_INDEX)              # Append value to array
+        array_loc = self.get_var_location(append_node.array.val) 
+        self.generate_statement(append_node.value)  # Then push value to append
+        self.emit(Opcode.APPEND_INDEX, array_loc)              # Append value to array
     
     def generate_array_delete(self, delete_node):
         """Generate bytecode for deleting from an array"""
         array_loc = self.get_var_location(delete_node.array.val)
-        self.generate_expression(delete_node.index)  # Push index to delete
-        self.emit(Opcode.LOAD, array_loc)           # Load array
-        self.emit(Opcode.DELETE_INDEX)              # Delete element at index
+        self.generate_statement(delete_node.index)  # Push index to delete
+        self.emit(Opcode.DELETE_INDEX, array_loc)              # Delete element at index
 
     def print_assembly(self):
         """Print generated assembly code"""
         for line in self.instructions:
-            print(line)
+            # print(line)
+            print(line[0][0], line[0][1], line[1])
             
-    def generate_function(self, stmt):
+           
+    def generate_function(self, expr):
         """Generate assembly for function definition"""
         # Store function name
-        func_name = stmt.name
+        func_name = expr.name
         
         # Create a label for the function
         func_label = self.generate_label()
@@ -389,14 +385,14 @@ class AssemblyGenerator:
         
         # Pre-allocate locations for parameters
         param_locations = []
-        for param_type, param_name in stmt.params:
+        for param_type, param_name in expr.params:
             param_loc = self.get_var_location(param_name)
             param_locations.append(param_name)
         
         self.function_table[func_name] = {
             'label': func_label,
             'params': param_locations,
-            'return_type': stmt.return_type if hasattr(stmt, 'return_type') else None
+            'return_type': expr.return_type if hasattr(expr, 'return_type') else None
         }
         
         # Jump past the function definition during normal execution
@@ -411,13 +407,13 @@ class AssemblyGenerator:
         self.current_function = func_name
         
         # Generate code for function body
-        self.generate_statement(stmt.body)
+        self.generate_statement(expr.body)
         
         # If no explicit return at the end, add one with None value
-        if not isinstance(stmt.body, Return) and not (
-                isinstance(stmt.body, Sequence) and 
-                stmt.body.statements and 
-                isinstance(stmt.body.statements[-1], Return)):
+        if not isinstance(expr.body, Return) and not (
+                isinstance(expr.body, Sequence) and 
+                expr.body.statements and 
+                isinstance(expr.body.statements[-1], Return)):
             self.emit(Opcode.PUSH, None)  # Push None as default return value
             self.emit(Opcode.RETURN)
         
@@ -439,17 +435,20 @@ class AssemblyGenerator:
         # Call the function
         self.emit(Opcode.CALL, call_node.name)
         
-
+# with open('bytecode_tests.txt', 'r', encoding='utf-8') as file:
 with open('sample_code.yap', 'r', encoding='utf-8') as file:
         source_code = file.read()
 ast = parse(source_code)
-print(ast)
+# print(ast)
 generator = AssemblyGenerator()
-generator.generate(ast)
-print(generator.function_table)
+abc, function_table = generator.generate(ast)
+# print(abc)
+# print(generator.function_table)
 # Print human-readable assembly
-generator.print_assembly()
+# generator.print_assembly()
+vm = StackVM(abc, function_table)
+# print("ok")
+vm.run()
 
-# source_code = "int[] arr = [1, 2, 3]; print(arr[2]);"
 
 
