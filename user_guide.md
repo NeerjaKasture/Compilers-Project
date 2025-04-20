@@ -9,6 +9,7 @@ The datatype of the variable must be defined by the user at the time of declarat
 - `bool` - `nocap` (true) or `cap` (false)
 - `string` - Text
 - `int[]`, `float[]`, `bool[]`, `string[]` - Arrays
+- `fn` - functions
 
 ### Declaring Variables:
 ```yap

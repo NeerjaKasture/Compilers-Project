@@ -26,7 +26,7 @@ Compilers-Project
 
 ### Data Types
 - Primitive: `int`, `float`, `string`, `bool`
-- Composite: Arrays (`int[]`, `float[]`, `string[]`, `bool[]`), stacks, queues
+- Composite: Arrays (`int[]`, `float[]`, `string[]`, `bool[]`), stacks, queues, functions (fn)
 
 ### Operators
 - Arithmetic: `+`, `-`, `*`, `/`, `^`, `%`
@@ -121,7 +121,7 @@ The AssemblyGenerator converts parsed abstract syntax trees (ASTs) into bytecode
 - **Arithmetic & Logic**: `ADD`, `SUB`, `MUL`, `DIV`, `POW` (power), `NEG` (negation), `CMP_LT`, `CMP_GT`, `CMP_EQ`, `CMP_NEQ`.
 - **Control Flow**: `JMP` (unconditional jump), `JZ` (jump if zero), `JNZ` (jump if nonzero), `CALL` (function call), `RETURN`.
 - **Variable Management**: `STORE` (assign value to a variable), `LOAD` (retrieve value).
-- **Array Operations**: `NEWARRAY` (allocate array), `LOAD_INDEX` (fetch element), `STORE_INDEX` (update element), `APPEND_INDEX` (append value), `DELETE_INDEX` (remove element).
+- **Array Operations**: `NEWARRAY` (allocate array), `LOAD_INDEX` (fetch element), `STORE_INDEX` (update element), `APPEND_INDEX` (append value), `DELETE_INDEX` (remove element) , `CREATE_LIST` (make an array of 'n' elements).
 - **System Calls**: `PRINT` (print value), `INPUT` (read input), `EXIT` (terminate execution).
 
 # How to Run the Code
@@ -194,7 +194,7 @@ The current test suite `testing.yap` gives **76% line coverage** and **72% branc
 # Work Distribution
 
 - **Neerja** - Variables, Functions and Recursion, Strings, static typechecking, Euler problems
-- **Anura** - Loops, Recursion, bytecode and checking, Arithmetic, if-elif-else, Blocks
+- **Anura** -  Arithmetic, if-elif-else, Blocks, Loops, Recursion, bytecode and checking
 - **Saloni** - Arrays, functions to support arrays, logical operations (bitwise), testing files, coverage calculations
 - **Siri** - Input statements for the data types, Types of Errors, Test cases, stacks
 - **Srijahnavi** - `yap` statement for all data types, Arrays, Errors, Test cases

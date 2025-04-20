@@ -199,13 +199,21 @@ inside_function=False
 
 def parse(s: str) -> AST:
     t = peekable(lex(s))
-    
+
+    # debug prints while adding line numbers in errors
+    # print(list(t))
+    # print(t.peek(None))
+    # print(isinstance(t.peek(None), KeywordToken))
+    # print(isinstance(t.peek(None), KeywordToken) and t.peek(None).val == "yap")
+    # print(t.peek(None) == KeywordToken("yap"))
+
     def parse_sequence():
         statements = []
         
         while True:
             try:
                 token=t.peek(None)
+                last_token = token
                 if token is None:
                     break
                 match t.peek(None): 
@@ -249,11 +257,10 @@ def parse(s: str) -> AST:
                     if isinstance(t.peek(None), SymbolToken) and t.peek(None).val == ";":
                         next(t)   
                     else:
-                        raise ParseError("Expected ';' after statement", t.peek(None))
+                        raise ParseError("Expected ';' after statement", last_token)
 
             except ParseError as e:
-                print(e)
-                break
+                raise e
         return Sequence(statements) 
                         
     def parse_function_call():
@@ -269,23 +276,34 @@ def parse(s: str) -> AST:
                         return parse_comparator()
                     
                     next(t)
+                    last_token = t.peek(None)
                     args = []
                     while t.peek(None) and not (isinstance(t.peek(None), ParenthesisToken) and t.peek(None).val == ")"):
                         args.append(parse_comparator())
+                        if t.peek(None):
+                            last_token = t.peek(None)
 
                         if t.peek(None) == SymbolToken(","):
                             next(t)
                         else:
                             break
                     
-                    if next(t) != ParenthesisToken(")"):
-                        raise ParseError("Expected ')' after function arguments", t.peek(None))
+                    # if next(t) != ParenthesisToken(")"):
+                    #     raise ParseError("Expected ')' after function arguments", t.peek(None))
 
+                    try:
+                        closing = next(t)
+                        if closing != ParenthesisToken(")"):
+                            raise ParseError("Expected ')' after function arguments", last_token)
+                    except StopIteration:
+                        # Fall back to the last meaningful token for location info
+                        raise ParseError("Unexpected end of input, expected ')'", last_token)
 
+                    last_token = t.peek(None)
                     # Checking queue operations
                     if name.endswith(".stackPush"):
                         if len(args) != 1:
-                            raise ParseError(f"Stack push expects exactly 1 argument, got {len(args)}")
+                            raise ParseError(f"Stack push expects exactly 1 argument, got {len(args)}", last_token)
                         stack_name = name.split(".")[0]
                         return StackPush(stack_name, args[0])
 
@@ -299,7 +317,7 @@ def parse(s: str) -> AST:
                     
                     if name.endswith(".queuePush"):
                         if len(args) != 1:
-                            raise ParseError(f"Queue push expects exactly 1 argument, got {len(args)}")
+                            raise ParseError(f"Queue push expects exactly 1 argument, got {len(args)}", last_token)
                         queue_name = name.split(".")[0]
                         return QueuePush(queue_name, args[0])
 
@@ -345,8 +363,7 @@ def parse(s: str) -> AST:
                 case _:
                     return parse_comparator()
         except ParseError as e:
-            print(e)
-            return None
+            raise e
 
     def parse_function():
         try:
@@ -436,8 +453,7 @@ def parse(s: str) -> AST:
                         case _:
                             raise NameError("function name")
         except ParseError as e:
-            print(e)
-            return None
+            raise e
         
     
     def parse_print():
@@ -456,6 +472,7 @@ def parse(s: str) -> AST:
             else:
                 break
         
+        # print(t.peek(None)) # debug
         if next(t) != ParenthesisToken(")"):
             raise ParseError("Expected ')' after print arguments", t.peek())
 
@@ -475,6 +492,7 @@ def parse(s: str) -> AST:
                     
                     condition = parse_comparator()
                     
+
                     closing_paren = next(t, None)  
                     if not isinstance(closing_paren, ParenthesisToken) or closing_paren.val != ')':
                         raise ParseError("Expected ')' after if condition", t.peek())
@@ -720,8 +738,7 @@ def parse(s: str) -> AST:
                 case _:
                     return parse_declaration()
         except ParseError as e:
-            print(e)
-            return None
+            raise e
 
     def parse_declaration():
         try:
@@ -872,8 +889,7 @@ def parse(s: str) -> AST:
                 case _:
                     return parse_comparator()
         except ParseError as e:
-            print(e)
-            return None
+            raise e
         
     def parse_comparator():
         try:
@@ -904,8 +920,7 @@ def parse(s: str) -> AST:
                     case _:
                         return ast
         except ParseError as e:
-            print(e)
-            return None
+            raise e
 
     def parse_add():
         try:
@@ -918,8 +933,7 @@ def parse(s: str) -> AST:
                     case _:
                         return ast
         except ParseError as e:
-            print(e)
-            return None
+            raise e
 
     def parse_sub():
         try:
@@ -932,8 +946,7 @@ def parse(s: str) -> AST:
                     case _:
                         return ast
         except ParseError as e:
-            print(e)
-            return None
+            raise e
 
     def parse_mod():
         try:
@@ -946,8 +959,7 @@ def parse(s: str) -> AST:
                     case _:
                         return ast
         except ParseError as e:
-            print(e)
-            return None
+            raise e
 
     def parse_mul():
         try:
@@ -960,8 +972,7 @@ def parse(s: str) -> AST:
                     case _:
                         return ast
         except ParseError as e:
-            print(e)
-            return None
+            raise e
 
     def parse_div():
         try:
@@ -977,8 +988,7 @@ def parse(s: str) -> AST:
                     case _:
                         return ast
         except ParseError as e:
-            print(e)
-            return None
+            raise e
 
     def parse_modulo():
         try:
@@ -993,8 +1003,7 @@ def parse(s: str) -> AST:
                     case _:
                         return ast
         except ParseError as e:
-            print(e)
-            return None
+            raise e
 
 
     def parse_exponent():
@@ -1095,9 +1104,7 @@ def parse(s: str) -> AST:
                 case _:
                     raise ParseError(f"Unexpected token: {t.peek(None)}", t.peek())
         except ParseError as e:
-            print(e)
-            next(t)
-            return None
+            raise e
 
     return parse_sequence()
 
