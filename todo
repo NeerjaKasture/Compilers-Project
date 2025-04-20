@@ -1,0 +1,8 @@
+hashmap < string , int[] > scores;
+scores["mid"] = [10, 20, 30];
+yap(scores["mid"][1]);      
+
+
+hashmap < string , hashmap < string , int > > db;
+db["math"]["marks"] = 95;
+yap(db["math"]["marks"]);    

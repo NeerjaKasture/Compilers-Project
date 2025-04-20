@@ -190,6 +190,10 @@ class HashMap(AST):
     index_type: str
     value_type: str
 
+@dataclass
+class StructDefinition(AST):
+    name: str
+    fields: list[tuple[str, str]]  # List of (type, name)
 
 inside_function=False
 
@@ -232,6 +236,8 @@ def parse(s: str) -> AST:
                         statements.append(parse_print())
                     case ParenthesisToken("}"):  
                         break
+                    case KeywordToken("struct"):
+                        statements.append(parse_struct())
                     case _:
                         
                         stmt = parse_condition()
@@ -614,6 +620,58 @@ def parse(s: str) -> AST:
         except ParseError as e:
             print(e)
             return None
+        
+    def parse_struct():
+        try:
+            match t.peek(None):
+                case KeywordToken("struct"):
+                    next(t)  # Consume 'struct'
+                    if not isinstance(t.peek(None), VariableToken):
+                        raise ParseError("Expected struct name after 'struct'", t.peek())
+                    struct_name = t.peek(None).val
+                    next(t)  # Consume struct name
+                    if t.peek(None) != ParenthesisToken("{"):
+                        raise ParseError("Expected '{' after struct name", t.peek())
+                    next(t)  # Consume '{'
+                    fields = []
+
+                    while True:
+                        if t.peek(None) == ParenthesisToken("}"):
+                            break
+                        if isinstance(t.peek(None),TypeToken):
+                            field_type = next(t).val
+                        elif isinstance(t.peek(None), KeywordToken) and t.peek(None).val == "fn":
+                            field_type = "fn"
+                            next(t)
+                        else:
+                            raise ParseError("Expected type for struct field", t.peek())
+                        if t.peek(None) == ParenthesisToken("["):
+                            next(t)
+                            if next(t) != ParenthesisToken("]"):
+                                raise ParseError("Expected ']' for array field", t.peek())
+                            field_type += "[]"
+
+                        if not isinstance(t.peek(None), VariableToken):
+                            raise ParseError("Expected variable name for struct field", t.peek())
+                        field_name = next(t).val
+                        fields.append((field_type, field_name))
+                        if t.peek(None) == SymbolToken(";"):
+                            next(t)
+                        else:
+                            raise ParseError("Expected ';' after struct field", t.peek())
+                    
+                    if t.peek(None) != ParenthesisToken("}"):
+                        raise ParseError("Expected '}' after struct fields", t.peek())
+                    next(t)  # Consume '}'
+                    return StructDefinition(struct_name, fields)
+                case _:
+                    pass
+        except ParseError as e:
+            print(e)
+            return None
+                    
+
+                    
 
     def parse_assignment():
         try:
@@ -951,7 +1009,7 @@ def parse(s: str) -> AST:
                         return ast
         except ParseError as e:
             print(e)
-            return None
+            return None        
 
     def parse_atom():
         try:
