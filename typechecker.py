@@ -207,31 +207,29 @@ class TypeChecker:
                 if not node.elements:
                     return "undefined"
 
-                first_type = self.visit(node.elements[0])
-
+                first_elem_type = self.visit(node.elements[0])
+                
                 for elem in node.elements:
                     elem_type = self.visit(elem)
-                    if elem_type != first_type:
-                        raise TypeError(f"Array elements must be of the same type, but found {first_type} and {elem_type}")
+                    if elem_type != first_elem_type:
+                        raise TypeError(f"Array elements must be of the same type, but found {first_elem_type} and {elem_type}")
 
-                return f"{first_type}[]"
+                return f"{first_elem_type}[]"
             
             case "ArrayAccess":
-                array_type = self.visit(node.array)
-                
-                # Ensure it is an array type
-                if "[]" not in array_type and array_type!="string":
+                array_type = self.visit(node.array)  # May return 'int[][]', 'int[]', etc.
+
+                if not array_type.endswith("[]") and array_type != "string":
                     raise TypeError(f"Cannot index non-array type {array_type}")
 
-                # Extract the element type (e.g., "int[]" → "int")
-                element_type = array_type.replace("[]", "")
-
-                # Ensure the index is an integer
                 index_type = self.visit(node.index)
                 if index_type != "int":
                     raise TypeError(f"Array index must be of type int, but got {index_type}")
 
-                return element_type  
+                if array_type == "string":
+                    return "string"  # Optional: or 'char', based on your language
+
+                return array_type[:-2]  # Remove one level of []  
             
             case "ArrayAssignment":
                 array_type = self.visit(node.array)
@@ -239,7 +237,7 @@ class TypeChecker:
                 if "[]" not in array_type and array_type!="string":
                     raise TypeError(f"Cannot assign to non-array type {array_type}")
 
-                element_type = array_type.replace("[]", "")
+                element_type = array_type[:-2]
 
                 index_type = self.visit(node.index)
                 if index_type != "int":

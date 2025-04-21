@@ -1,4 +1,3 @@
-
 def is_prime(int num) -> bool{
     for(int i=2;i<num;i=i+1){
         if((num%i)==0){
