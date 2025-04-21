@@ -1,8 +1,6 @@
-hashmap < string , string > m;
-m["a"] = "apple";
-m["b"] = "banana";
-yap(m["a"]);         
-yap(m["b"]);    
-yap(m.len());      
-m.delete("a");
-yap(m.len());   
+hashmap < int , int > flags;
+flags[1] = 0;
+flags[~2] = ~2;
+yap(flags[1]);         
+yap(flags[~2]);        
+yap(flags.len());     

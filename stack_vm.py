@@ -173,7 +173,10 @@ class StackVM:
 
             elif op == 0x13:  # PRINT
                 val=self.stack.pop()
-                self.print_buffer.append(str(val))
+                if isinstance(val, (int, float)) and val < 0:
+                    self.print_buffer.append("~" + str(abs(val)))
+                else:
+                    self.print_buffer.append(str(val))
                 
             elif op == 0x19: #INPUT
                 user_input = input()
@@ -222,7 +225,6 @@ class StackVM:
                 
             elif op ==0x23: #LEN
                 arr = self.get_var(args[0])
-                self.stack.append(len(arr))
-                        
+                self.stack.append(len(arr))            
                    
             self.pc += 1
