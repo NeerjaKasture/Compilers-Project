@@ -37,6 +37,8 @@ class Opcode(Enum):
     DELETE_INDEX = 0x20
     MOD = 0x16
     FLR_DIV = 0x21
+    NEWHASH = 0x22
+    LEN = 0x23
     
 class AssemblyGenerator:
     def __init__(self):
@@ -107,7 +109,8 @@ class AssemblyGenerator:
 
         elif isinstance(expr, ArrayDelete):  # Handle deletion in expressions
             self.generate_array_delete(expr)
-            
+        elif isinstance(expr, ArrayLength):
+            self.generate_array_length(expr)    
         elif isinstance(expr, BinOp):
             op_map = {
                 "+": Opcode.ADD, "-": Opcode.SUB, "*": Opcode.MUL, "/": Opcode.DIV, "^": Opcode.POW,
@@ -190,7 +193,6 @@ class AssemblyGenerator:
             self.generate_statement(expr.value)  
             self.emit(Opcode.STORE, var_loc)
         elif isinstance(expr, ArrayAssignment): 
-            print(":::::", expr)
             self.generate_array_store(expr)  # Store value at index
         elif isinstance(expr, Print):
             for value in expr.values:
@@ -234,7 +236,11 @@ class AssemblyGenerator:
                 self.generate_statement(expr.value)
             
             self.emit(Opcode.RETURN)
-
+        
+        elif isinstance(expr, HashMap):
+            self.emit(Opcode.NEWHASH)
+            self.emit(Opcode.STORE,self.get_var_location(expr.name))
+            
         else:
             self.generate_statement(expr) 
 
@@ -361,7 +367,10 @@ class AssemblyGenerator:
         array_loc = self.get_var_location(delete_node.array.val)
         self.generate_statement(delete_node.index)  # Push index to delete
         self.emit(Opcode.DELETE_INDEX, array_loc)              # Delete element at index
-
+    def generate_array_length(self, expr):
+        """Generate bytecode for deleting from an array"""
+        array_loc = self.get_var_location(expr.array.val)
+        self.emit(Opcode.LEN, array_loc)              # length
     def print_assembly(self):
         """Print generated assembly code"""
         for line in self.instructions:

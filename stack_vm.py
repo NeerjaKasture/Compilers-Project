@@ -19,7 +19,7 @@ class StackVM:
         self.pc = 0
         self.print_buffer = []
         self.function_table = function_table
-        print(function_table)
+        # print(function_table)
         
     def _map_labels(self):
         labels = {}
@@ -217,7 +217,12 @@ class StackVM:
                 print(' '.join(self.print_buffer))
                 self.print_buffer.clear()
             
-            
+            elif op== 0x22: #NEWHASH
+                self.stack.append({})
                 
+            elif op ==0x23: #LEN
+                arr = self.get_var(args[0])
+                self.stack.append(len(arr))
+                        
                    
             self.pc += 1
