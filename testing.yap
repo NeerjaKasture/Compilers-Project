@@ -473,4 +473,29 @@ flags[1] = nocap;
 flags[2] = cap;
 yap(flags[1]);         
 yap(flags[2]);        
-yap(flags.len());     
+yap(flags.len()); 
+
+yap("======== Nested Array test cases =========");
+
+int[][] m = [[1,2],[3,4]];
+
+int n1 = m[0][0];
+int n2 = m[0][1] + 1;
+int n3 = m[1][0] + 2;
+int n4 = m[1][1] + m[0][0];
+yap(n1, n2, n3, n4 == m[1][1] + m[0][0]);
+
+m[0][0] = ~10;
+yap(m);
+m[0][0] = 1;
+
+m.append(10);
+yap(m);
+m.delete(2);
+yap(m);
+
+m[0].append(30);
+yap(m);
+yap(m[0].len());
+m[1].append(50);
+yap(m);

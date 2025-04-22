@@ -381,39 +381,81 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
             return array_val[index_val]
         
         case ArrayAssignment(array, index, value):
-            array_val = e(array, env, types)
-            index_val = e(index, env, types)
-            value_val = e(value, env, types)
-            if not isinstance(array_val, (list,str,dict)):
-                raise TypeError(f"Assignment cannot be used with type {type(array_val).__name__}")
-            array_val[index_val] = value_val
-            return value_val
-        
+            # ── multi‑index form  arr[0][1] = rhs  (index is None) ─────────
+            if index is None and isinstance(array, ArrayAccess):
+                idx_asts: list[AST] = []
+                node = array
+                while isinstance(node, ArrayAccess):
+                    idx_asts.insert(0, node.index)
+                    node = node.array              # walk up
+                if not isinstance(node, Variable):
+                    raise RuntimeError("Invalid assignment target")
+
+                # base collection
+                col = e(node, env, types)
+                if not isinstance(col, (list, dict)):
+                    raise TypeError("Left side must be array or hashmap")
+
+                # walk down to parent container
+                for idx_ast in idx_asts[:-1]:
+                    col = col[e(idx_ast, env, types)]
+                    if not isinstance(col, (list, dict)):
+                        raise TypeError("Intermediate element is not a collection")
+
+                last_idx = e(idx_asts[-1], env, types)
+                col[last_idx] = e(value, env, types)
+                return col[last_idx]
+
+            # ── single‑level form  arr[i] = rhs  or  map[key] = rhs ───────
+            col   = e(array, env, types)
+            key   = e(index, env, types)
+            val   = e(value, env, types)
+
+            if isinstance(col, list):
+                if not isinstance(key, int):
+                    raise TypeError("Array index must be an integer")
+                if key < 0 or key >= len(col):
+                    raise IndexError(f"Index {key} out of bounds")
+            elif not isinstance(col, dict):
+                raise TypeError("Assignment target is neither array nor hashmap")
+
+            col[key] = val
+            return val
+
         case ArrayAppend(array, value):
-            array_name = array.val  # Get the variable name
-            if array_name in env and isinstance(env[array_name], (list)):
-                env[array_name].append(e(value, env, types))  # Append the new value
-                return env[array_name]  # Return the updated array
-            else:
-                raise TypeError(f"Cannot append to non-array type: {array_name}")
-            
+            arr = e(array, env, types)
+            if not isinstance(arr, list):
+                raise TypeError("append() can only be used on arrays")
+            arr.append(e(value, env, types))
+            return arr                           # return the *same list* ref
+
         case ArrayDelete(array, index):
-            array_name = array.val  # Get the variable name
-            if array_name in env and isinstance(env[array_name], (list,dict)):
-                index_val = e(index, env, types)  # Evaluate the index
-                
-                del env[array_name][index_val]  # Remove the element at index
-                return env[array_name]  # Return updated array
-            else:
-                raise TypeError(f"Cannot delete from non-array type: {array_name}")
-            
+            col = e(array, env, types)
+
+            if isinstance(col, list):
+                idx = e(index, env, types)
+                if not isinstance(idx, int):
+                    raise TypeError("Array index must be an integer")
+                if idx < 0 or idx >= len(col):
+                    raise IndexError(f"Index {idx} out of bounds")
+                del col[idx]
+                return col
+
+            if isinstance(col, dict):
+                key = e(index, env, types)
+                if key not in col:
+                    raise KeyError(f"Key {key} not found in hashmap")
+                del col[key]
+                return col
+
+            raise TypeError("delete() can only be used on arrays or hashmaps")
+
         case ArrayLength(array):
-            array_name = array.val  # Get the variable name
-            if array_name in env and isinstance(env[array_name], (list,str,dict)):
-                return len(env[array_name])  # Return the length of the array
-            else:
-                raise TypeError(f"Cannot get length of non-array type: {array_name}")
-            
+            col = e(array, env, types)
+            if isinstance(col, (list, dict)):
+                return len(col)
+            raise TypeError("len() can only be used on arrays or hashmaps")
+                    
         case HashMap(name,key_type, value_type):
             env[name] = {}  
             types[name] = f"hashmap<{key_type}, {value_type}>"

@@ -1,4 +1,4 @@
-from parser import parse
+from parser import *
 
 arithmetic_operators = ["+", "-", "*", "/", "^","%","//"]
 comparison_operators = ["==", "!=", "<", ">", "<=", ">="]
@@ -212,38 +212,35 @@ class TypeChecker:
                 return f"{first_type}[]"
             
             case "ArrayAccess":
-                collection_type = self.visit(node.array)
+                array_type = self.visit(node.array)
 
-                # Check for array
-                if "[]" in collection_type:
-                    element_type = collection_type.replace("[]", "")
+                # ───── 1. string  ────────────────────────────────────────
+                if array_type == "string":
+                    idx_t = self.visit(node.index)
+                    if idx_t != "int":
+                        raise TypeError("String index must be int")
+                    return "string"  # or "char"
 
-                    index_type = self.visit(node.index)
-                    if index_type != "int":
-                        raise TypeError(f"Array index must be of type int, but got {index_type}")
-                    
-                    return element_type
+                # ───── 2. ordinary array (int[][] etc.) ──────────────────
+                if array_type.endswith("[]"):
+                    idx_t = self.visit(node.index)
+                    if idx_t != "int":
+                        raise TypeError("Array index must be int")
+                    return array_type[:-2]  # drop one “[]”
 
-                # Check for hashmap
-                elif collection_type.startswith("hashmap<"):
-                    key_type_expected, value_type = collection_type[8:-1].split(",")
+                # ───── 3. hashmap<key,value> ─────────────────────────────
+                if array_type.startswith("hashmap<"):
+                    try:
+                        key_t, val_t = [x.strip() for x in array_type[8:-1].split(",")]
+                    except ValueError:
+                        raise TypeError(f"Invalid hashmap type format: {array_type}")
+                    idx_t = self.visit(node.index)
+                    if idx_t != key_t:
+                        raise TypeError(f"Hashmap key must be {key_t}, got {idx_t}")
+                    return val_t
 
-                    index_type = self.visit(node.index)
-                    if index_type.strip() != key_type_expected.strip():
-                        raise TypeError(f"Hashmap key must be of type {key_type_expected}, but got {index_type}")
-
-                    return value_type.strip()
-                
-                elif collection_type == "string":
-                    index_type = self.visit(node.index)
-                    if index_type != "int":
-                        raise TypeError(f"String index must be of type int, but got {index_type}")
-
-                    return "string"
-
-                # Not indexable
-                else:
-                    raise TypeError(f"Cannot index non-array/hashmap type {collection_type}")
+                # ───── 4. invalid index access ──────────────────────────
+                raise TypeError(f"Cannot index non-array type {array_type}") 
 
            
             case "ArrayAppend":
@@ -262,41 +259,46 @@ class TypeChecker:
             case "ArrayDelete":
                 collection_type = self.visit(node.array)
 
-                # Array delete: delete by index
+                if node.index is None:          # delete on arr[i][j] chain
+                    if "[]" not in collection_type:
+                        raise TypeError("delete() can only be used on arrays")
+                    return collection_type       # OK
+
+                # single‑level delete (your existing logic)
                 if "[]" in collection_type:
-                    index_type = self.visit(node.index)
-                    if index_type != "int":
-                        raise TypeError(f"Array index must be of type int, but got {index_type}")
+                    idx_type = self.visit(node.index)
+                    if idx_type != "int":
+                        raise TypeError("Array index must be int")
                     return collection_type
 
-                # Map delete: delete by key
-                elif collection_type.startswith("hashmap<"):
-                    key_type_expected, value_type = collection_type[8:-1].split(",")
-                    
-                    key_type = self.visit(node.index)
-
-                    if key_type != key_type_expected:
-                        raise TypeError(f"Key type mismatch in map delete: expected {key_type_expected}, got {key_type}")
-                    return collection_type
-
-                else:
-                    raise TypeError(f"Cannot delete from non-array/map type: {collection_type}")
 
             case "ArrayAssignment":
+                # ───  new multi‑index form  arr[0][1] = val  ────────────
+                if node.index is None and isinstance(node.array, ArrayAccess):
+                    # Walk down the ArrayAccess chain to find the leaf type
+                    elem_type = self.visit(node.array)
+                    val_type  = self.visit(node.value)
+                    if elem_type != val_type and val_type != "undefined":
+                        raise TypeError(
+                            f"Type mismatch: array element expects {elem_type}, got {val_type}"
+                        )
+                    return val_type
+
+                # ─── original single‑index form  arr[i] = val  ──────────
                 collection_type = self.visit(node.array)
 
-                # Array case
-                if "[]" in collection_type:
-                    element_type = collection_type.replace("[]", "")
+                if "[]" in collection_type:              # simple array
+                    element_type = collection_type[:-2]  # drop one “[]”
 
                     index_type = self.visit(node.index)
                     if index_type != "int":
-                        raise TypeError(f"Array index must be of type int, but got {index_type}")
+                        raise TypeError("Array index must be int")
 
                     value_type = self.visit(node.value)
-                    if value_type != element_type:
-                        raise TypeError(f"Type mismatch: array expects {element_type}, but got {value_type}")
-
+                    if value_type != element_type and value_type != "undefined":
+                        raise TypeError(
+                            f"Type mismatch: array expects {element_type}, got {value_type}"
+                        )
                     return value_type
 
                 # Hashmap case

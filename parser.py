@@ -5,6 +5,9 @@ from keywords import keywords, datatypes
 from lexer import *
 from errors import *
 
+# helper‑method names recognised after an array / array element
+METHODS = {"append", "delete", "len"}
+
 class AST:
     pass
 
@@ -357,8 +360,6 @@ def parse(s: str) -> AST:
                             raise ParseError("len function takes no arguments", t.peek())
                         return ArrayLength(Variable(array_name))
                     
-                    
-                    
                     return FunctionCall(name, args)
                 case _:
                     return parse_comparator()
@@ -421,7 +422,7 @@ def parse(s: str) -> AST:
                                 else:
                                     raise TypeError("Expected return type after '->'", t.peek())
                                 # Check if return type is an array (e.g., int[])
-                                if t.peek(None) == ParenthesisToken("["):
+                                while t.peek(None) == ParenthesisToken("["):
                                     next(t)
                                     if next(t) != ParenthesisToken("]"):
                                         raise ParseError("Expected ']' for array return type", t.peek())
@@ -686,57 +687,79 @@ def parse(s: str) -> AST:
                     pass
         except ParseError as e:
             print(e)
-            return None
-                    
-
-                    
+            return None  
 
     def parse_assignment():
         try:
-            match t.peek(None):
-                case VariableToken(var_name):
-                    next(t)
-                    match t.peek(None):
-                        case OperatorToken('='):
-                            next(t)
-                            if isinstance(t.peek(None), KeywordToken) and t.peek(None).val == "spill":
-                                next(t)  # consume 'input'
-                                if not isinstance(t.peek(None), ParenthesisToken) or t.peek(None).val != '(':
-                                    raise ParseError("Expected '(' after input", t.peek())
-                                next(t)
-                                if not isinstance(t.peek(None), ParenthesisToken) or t.peek(None).val != ')':
-                                    raise ParseError("Expected ')' after input", t.peek())
-                                next(t) 
-                                return Assignment(var_name, Input())
-                            value = parse_comparator()
-                            if isinstance(value, Variable) and t.peek(None) == ParenthesisToken('['):
-                                next(t)
-                                index = parse_comparator()
-                                if next(t) != ParenthesisToken(']'):
-                                    raise ParseError("Expected ']' after array index", t.peek())
-                                value = ArrayAccess(value, index)  # Convert to ArrayAccess node
+            # not a variable ⇒ let declaration / general expression handle it
+            if not isinstance(t.peek(None), VariableToken):
+                return parse_declaration()
 
-                            return Assignment(var_name, value)
-                        
-                        case ParenthesisToken('('):  # Function call
-                            t.prepend(VariableToken(var_name))
-                            return parse_function_call()
-                        case ParenthesisToken('['):  # Array assignment
-                            next(t)
-                            index = parse_comparator()
-                            if next(t) != ParenthesisToken(']'):
-                                raise ParseError("Expected ']' after array index", t.peek())
-                            if t.peek(None) == OperatorToken('='):
-                                next(t)
-                                value = parse_comparator()
-                                return ArrayAssignment(Variable(var_name), index, value)
-                            return ArrayAccess(Variable(var_name), index)
-                            
-                        case _:
-                            t.prepend(VariableToken(var_name))  # Put back the variable token
-                            return parse_comparator()
-                case _:
-                    return parse_declaration()
+            # 1) consume the variable name
+            var_tok  = next(t)                      # VariableToken
+            var_name = var_tok.val
+            node: AST = Variable(var_name)
+
+            # 2) zero‑or‑more “[ index ]”  ⇒ build ArrayAccess chain
+            has_index = False
+            while t.peek(None) == ParenthesisToken('['):
+                has_index = True
+                next(t)                             # '['
+                idx_ast = parse_comparator()
+                if next(t) != ParenthesisToken(']'):
+                    raise ParseError("Expected ']' after array index", t.peek())
+                node = ArrayAccess(node, idx_ast)
+
+            # 3) simple or element assignment?  (look for '=')
+            if t.peek(None) == OperatorToken('='):
+                next(t)                             # consume '='
+
+                # -- special case -------------------------------------------------
+                #    t = spill();
+                # -----------------------------------------------------------------
+                if (isinstance(t.peek(None), KeywordToken)
+                        and t.peek(None).val == "spill"):
+                    next(t)                         # 'spill'
+                    if (next(t) != ParenthesisToken('(')
+                            or next(t) != ParenthesisToken(')')):
+                        raise ParseError("Expected empty spill()", t.peek())
+                    rhs_ast = Input()
+                else:
+                    rhs_ast = parse_comparator()
+
+                if has_index:                       # arr[i][j] = …
+                    return ArrayAssignment(node, None, rhs_ast)
+                else:                               # x = …
+                    return Assignment(var_name, rhs_ast)
+
+            # 4) not an assignment  → parse as expression (method chains allowed)
+            while isinstance(t.peek(None), SymbolToken) and t.peek(None).val == '.':
+                next(t)                             # '.'
+                if not isinstance(t.peek(None), VariableToken):
+                    raise ParseError("Expected method name after '.'", t.peek())
+                method = next(t).val
+                if method not in METHODS:           # {"append","delete","len"}
+                    raise ParseError(f"Unknown method '{method}'", t.peek())
+                if next(t) != ParenthesisToken('('):
+                    raise ParseError("Expected '(' after method", t.peek())
+
+                arg = None
+                if method in {"append", "delete"}:
+                    arg = parse_comparator()
+                if next(t) != ParenthesisToken(')'):
+                    raise ParseError("Expected ')' after method call", t.peek())
+
+                node = (ArrayAppend(node, arg)  if method == "append" else
+                        ArrayDelete(node, arg)  if method == "delete" else
+                        ArrayLength(node))
+
+            # optional plain function call (only if no “[ … ]” used)
+            if not has_index and t.peek(None) == ParenthesisToken('('):
+                t.prepend(VariableToken(var_name))
+                return parse_function_call()
+
+            return node                              # expression head
+
         except ParseError as e:
             raise e
 
@@ -865,27 +888,29 @@ def parse(s: str) -> AST:
                                             return Declaration(var_type + "[]", var_name, Array(elements))
                                         case _:
                                             raise ParseError("Expected '=' or '[' after variable name", t.peek())
-                            case ParenthesisToken('['):  # Array type
-                                next(t)
-                                if next(t) != ParenthesisToken(']'):
-                                    raise ParseError("Expected ']' after '[' in array type", t.peek())
+                            case ParenthesisToken('['):  # Possibly multi-dimensional array type
+                                array_depth = 0
+                                while t.peek(None) == ParenthesisToken('['):
+                                    next(t)
+                                    if next(t) != ParenthesisToken(']'):
+                                        raise ParseError("Expected ']' after '[' in array type", t.peek())
+                                    array_depth += 1
+
                                 match t.peek(None):
                                     case VariableToken(var_name):
                                         if var_name in keywords:
                                             raise InvalidVariableNameError(var_name)
-                                        else:
-                                            next(t)
-                                            match t.peek(None):
-                                                case OperatorToken('='):
-                                                    next(t)
-                                                    value = parse_comparator()
-                                                    return Declaration(var_type + "[]", var_name, value)
-                                                case _:
-                                                    raise ParseError("Expected '=' after array variable name", t.peek())
+                                        next(t)
+                                        match t.peek(None):
+                                            case OperatorToken('='):
+                                                next(t)
+                                                value = parse_comparator()
+                                                return Declaration(var_type + "[]" * array_depth, var_name, value)
+                                            case _:
+                                                raise ParseError("Expected '=' after array variable name", t.peek())
                                     case _:
                                         raise ParseError("Expected variable name after array type", t.peek())
-                            case _:
-                                raise ParseError("Expected variable name or '[' after type", t.peek())
+
                 case _:
                     return parse_comparator()
         except ParseError as e:
@@ -1023,86 +1048,125 @@ def parse(s: str) -> AST:
     def parse_atom():
         try:
             match t.peek(None):
+
+                # ---------------------------------------------------------
+                #  concat(left, right)
+                # ---------------------------------------------------------
                 case KeywordToken('concat'):
                     next(t)
-                    match t.peek(None):
-                        case ParenthesisToken('('):
-                            next(t)
-                            left = parse_atom()
-                            match t.peek(None):
-                                case SymbolToken(','):
-                                    next(t)
-                                    right = parse_atom()
-                                    match t.peek(None):
-                                        case ParenthesisToken(')'):
-                                            next(t)
-                                            return Concat(left, right)
-                                        case _:
-                                            raise ParseError("Expected ')' after concat arguments", t.peek())
-                                case _:
-                                    raise ParseError("Expected ',' after first concat argument", t.peek())
-                        case _:
-                            raise ParseError("Expected '(' after 'concat'", t.peek())
+                    if next(t) != ParenthesisToken('('):
+                        raise ParseError("Expected '(' after 'concat'", t.peek())
+                    left = parse_atom()
+                    if next(t) != SymbolToken(','):
+                        raise ParseError("Expected ',' after first concat arg", t.peek())
+                    right = parse_atom()
+                    if next(t) != ParenthesisToken(')'):
+                        raise ParseError("Expected ')' after concat args", t.peek())
+                    return Concat(left, right)
+
+                # ---------------------------------------------------------
+                #  unary operators:  not  ~~  ~
+                # ---------------------------------------------------------
                 case OperatorToken('not'):
                     next(t)
                     return BinOp('not', None, parse_atom())
+
                 case OperatorToken('~~'):
                     next(t)
-                    return BinOp("~~", None, parse_atom())
-                case OperatorToken('~'):  # Check for the tilde operator
+                    return BinOp('~~', None, parse_atom())
+
+                case OperatorToken('~'):
                     next(t)
                     return BinOp('*', Number('-1'), parse_atom())
+
+                # ---------------------------------------------------------
+                #  VARIABLE  (with optional [idx]… and .append/.delete/.len)
+                # ---------------------------------------------------------
                 case VariableToken(v):
-                    
                     next(t)
-                    # Check if this variable is an array accessing term
-                    if t.peek(None) == ParenthesisToken('['):
-                        next(t)
-                        index = parse_comparator()
+                    node: AST = Variable(v)
+
+                    # one or more “[ index ]” -> ArrayAccess chain
+                    while t.peek(None) == ParenthesisToken('['):
+                        next(t)                            # '['
+                        idx = parse_comparator()
                         if next(t) != ParenthesisToken(']'):
                             raise ParseError("Expected ']' after array index", t.peek())
-                        
-                        return ArrayAccess(Variable(v), index)
-                      # If no `[`, treat as normal variable
-                    
-                    if t.peek(None) == ParenthesisToken("("):
+                        node = ArrayAccess(node, idx)
+
+                    # zero or more “.method()” on the (sub)‑array
+                    while isinstance(t.peek(None), SymbolToken) and t.peek(None).val == '.':
+                        next(t)                            # '.'
+                        if not isinstance(t.peek(None), VariableToken):
+                            raise ParseError("Expected method name after '.'", t.peek())
+                        method = next(t).val
+
+                        if method not in METHODS:          # {"append","delete","len"}
+                            raise ParseError(f"Unknown method '{method}'", t.peek())
+
+                        if next(t) != ParenthesisToken('('):
+                            raise ParseError("Expected '(' after method name", t.peek())
+
+                        arg = None
+                        if method in {"append", "delete"}: # need exactly one argument
+                            arg = parse_comparator()
+
+                        if next(t) != ParenthesisToken(')'):
+                            raise ParseError("Expected ')' after method call", t.peek())
+
+                        # build the new AST node and continue (method chaining allowed)
+                        node = (ArrayAppend(node, arg)  if method == "append" else
+                                ArrayDelete(node, arg)  if method == "delete" else
+                                ArrayLength(node))      # len()
+
+                    # a normal function call that immediately follows the variable
+                    if t.peek(None) == ParenthesisToken('('):
                         t.prepend(VariableToken(v))
                         return parse_function_call()
-                    
-                    return Variable(v)
+
+                    return node
+
+                # ---------------------------------------------------------
+                #  literals, parenthesised expression, array literal
+                # ---------------------------------------------------------
                 case NumberToken(v):
                     next(t)
                     return Number(v)
+
                 case BooleanToken(v):
                     next(t)
                     return Boolean(v)
+
                 case ParenthesisToken('('):
                     next(t)
                     expr = parse_comparator()
-                    
-                    match next(t, None):
-                        case ParenthesisToken(')'):
-                            return Parenthesis(expr)
-                        case _:
-                            raise ParseError("Expected ')' after expression", t.peek())
+                    if next(t) != ParenthesisToken(')'):
+                        raise ParseError("Expected ')' after expression", t.peek())
+                    return Parenthesis(expr)
+
                 case StringToken(v):
                     next(t)
                     return String(v)
-                case ParenthesisToken('['):
+
+                case ParenthesisToken('['):                # array literal
                     next(t)
                     elements = []
                     while t.peek(None) and not (isinstance(t.peek(None), ParenthesisToken) and t.peek(None).val == "]"):
                         elements.append(parse_comparator())
-                        if t.peek(None) == SymbolToken(","):
+                        if t.peek(None) == SymbolToken(','):
                             next(t)
                         else:
                             break
-                    if next(t) != ParenthesisToken("]"):
+                    if next(t) != ParenthesisToken(']'):
                         raise ParseError("Expected ']' after array elements", t.peek())
                     return Array(elements)
-                
+
+                # ---------------------------------------------------------
+                #  fallback
+                # ---------------------------------------------------------
                 case _:
                     raise ParseError(f"Unexpected token: {t.peek(None)}", t.peek())
+
         except ParseError as e:
             raise e
 

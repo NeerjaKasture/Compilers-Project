@@ -120,7 +120,7 @@ def lex(s: str) -> Iterator[Token]:
 
         else:
             match s[i]:
-                case '+' | '*' | '-' | '/' | '%' | '^' | '(' | ')' | '<' | '>' | '=' | '!' | '~' | '{' | '}' | ';' | ',' | '[' | ']' | '->'|'%':
+                case '.' | '+' | '*' | '-' | '/' | '%' | '^' | '(' | ')' | '<' | '>' | '=' | '!' | '~' | '{' | '}' | ';' | ',' | '[' | ']' | '->'|'%':
                     if i + 1 < len(s):
                         two_char_op = s[i:i + 2]
                         if two_char_op in {"<=", ">=", "==", "!=","~~"}:  # Explicitly handle <=, >=
@@ -129,6 +129,15 @@ def lex(s: str) -> Iterator[Token]:
                             continue
                     if s[i] in "}(){[]":
                         yield ParenthesisToken(s[i], line)
+                    # Handle square brackets (array access)
+                    elif s[i] == '[' or s[i] == ']':
+                        yield ParenthesisToken(s[i], line)
+                        i += 1
+                    # Handle dot notation for method calls (e.g., arr.append(2))
+                    elif s[i] == '.':
+                        yield SymbolToken('.', line)
+                        i += 1
+                        continue
                     elif s[i] == '-' and i + 1 < len(s) and s[i + 1] == '>':
                         yield SymbolToken('->', line)
                         i += 1
