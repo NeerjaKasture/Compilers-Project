@@ -42,6 +42,18 @@ class Queue:
         if not self.items:
             raise RuntimeError("Queue is empty")
         return self.items[0]  # Return first element without removing it
+    
+def format_for_print(val):
+    if isinstance(val, bool):
+        return "nocap" if val else "cap"
+    elif isinstance(val, int):
+        return f"~{abs(val)}" if val < 0 else str(val)
+    elif isinstance(val, list):
+        return "[" + ", ".join(format_for_print(item) for item in val) + "]"
+    elif isinstance(val, tuple):
+        return "(" + ", ".join(format_for_print(item) for item in val) + ")"
+    else:
+        return str(val)
 
 MAX_RECURSION_DEPTH = 1000
 def e(tree: AST, env={}, types={}, call_stack=[]):
@@ -357,19 +369,15 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
                 raise TypeError("Concat can only be used with String")
 
             return left_val + right_val 
-        
+
         case Print(values):
             results = []
             for value in values:
-                result = e(value, env, types)
-                if isinstance(result, bool): 
-                    result = "nocap" if result else "cap"
-                results.append(result)
-            # print(*results) 
-            print("".join(map(str, results)))
+                evaluated = e(value, env, types)
+                formatted = format_for_print(evaluated)
+                results.append(formatted)
+            print("".join(results))
             return None
-            # results = [e(value, env, types) for value in values]
-            # print(*results)  # Changed to use default print behavior with newline
            
         case Array(elements):
             return [e(element, env, types) for element in elements]            
