@@ -122,7 +122,7 @@ def test_operations():
     yap(not cap);
     yap("yap" == "print");
     """
-    expected_output = "25\n5\n150\n1.5\n-15\n225\n5\nnocap\ncap\nnocap\ncap\ncap\nnocap\n10\n15\n-16\ncap\nnocap\nnocap\ncap\n"
+    expected_output = "25\n5\n150\n1.5\n~15\n225\n5\nnocap\ncap\nnocap\ncap\ncap\nnocap\n10\n15\n~16\ncap\nnocap\nnocap\ncap\n"
 
     ast = parse(source_code)
     f = io.StringIO()
