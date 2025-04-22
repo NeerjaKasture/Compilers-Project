@@ -1,6 +1,6 @@
-from parser import parse
+from parser import *
 
-arithmetic_operators = ["+", "-", "*", "/", "^"]
+arithmetic_operators = ["+", "-", "*", "/", "^","%","//"]
 comparison_operators = ["==", "!=", "<", ">", "<=", ">="]
 logical_operators = ["and", "or", "not"]
 bitwise_operators = ["&", "|", "~~"]
@@ -101,6 +101,8 @@ class TypeChecker:
                 
             case 'Function':
                 self.functions[node.name] = (node.params, node.return_type)
+                self.declare_variable(node.name, 'fn')
+
                 self.enter_scope()  # Enter function scope
                 for param_type, param_name in node.params:
                     self.declare_variable(param_name, param_type)
@@ -110,22 +112,37 @@ class TypeChecker:
                 if return_type != node.return_type and return_type != "undefined":
                     raise TypeError(f'Function {node.name} return type mismatch: expected {node.return_type}, got {return_type}')
                 self.exit_scope()  # Exit function scope
+                return "fn"
             
             case 'Return':
                 return self.visit(node.value)
             
             case 'FunctionCall':
-                if node.name not in self.functions:
-                    raise NameError(f'Function {node.name} not declared')
-                expected_params, return_type = self.functions[node.name]
-                if len(node.params) != len(expected_params):
-                    raise TypeError(f'Function {node.name} expects {len(expected_params)} arguments, got {len(node.params)}')
-                for (expected_type, _), arg in zip(expected_params, node.params):
-                    arg_type = self.visit(arg)
-                    if arg_type != expected_type:
-                        raise TypeError(f'Function {node.name} argument type mismatch: expected {expected_type}, got {arg_type}')
-                return return_type
-            
+                if node.name in self.functions:
+                    expected_params, return_type = self.functions[node.name]
+                    if len(node.params) != len(expected_params):
+                        raise TypeError(f'Function {node.name} expects {len(expected_params)} arguments, got {len(node.params)}')
+                    
+                    for (expected_type, _), arg in zip(expected_params, node.params):
+                        arg_type = self.visit(arg)
+                        if arg_type != expected_type:
+                            raise TypeError(f'Function {node.name} argument type mismatch: expected {expected_type}, got {arg_type}')
+                    return return_type
+
+                # Else, check if it's a variable holding a function
+                else:
+                    try:
+                        var_type = self.lookup_variable(node.name)
+                        if var_type != 'fn':
+                            raise TypeError(f"'{node.name}' is not callable (type {var_type})")
+                        
+                        for arg in node.params:
+                            self.visit(arg)
+
+                        return 'undefined'  # Or you could track the return type later
+                    except NameError:
+                        raise NameError(f'Function {node.name} not declared')
+              
             case 'Sequence':
                 last_type = None
                 return_val = None
@@ -135,50 +152,47 @@ class TypeChecker:
                         return_val = last_type
                     if return_val is not None:
                         return return_val
-                
-                    
-                
-
+    
             case 'Cond':  
                 # Ensure all conditions are boolean
                 if node.If:
                     cond_type = self.visit(node.If[0])
                     if cond_type != 'bool':
                         raise TypeError("Condition must be of type 'bool'")
-                    self.enter_scope()
+                    # self.enter_scope()
                     self.visit(node.If[1])  # Visit if-body
-                    self.exit_scope()
+                    # self.exit_scope()
                 
                 for cond, body in node.Elif:
                     cond_type = self.visit(cond)
                     if cond_type != 'bool':
                         raise TypeError("Condition must be of type 'bool'")
-                    self.enter_scope()
+                    # self.enter_scope()
                     self.visit(body)  # Visit elif-body
-                    self.exit_scope()
+                    # self.exit_scope()
                 
                 if node.Else:
-                    self.enter_scope()
+                    # self.enter_scope()
                     self.visit(node.Else)
-                    self.exit_scope()
+                    # self.exit_scope()
 
             case 'While':
                 cond_type = self.visit(node.condition)
                 if cond_type != 'bool':
                     raise TypeError("Condition must be of type 'bool'")
-                self.enter_scope()
+                # self.enter_scope()
                 self.visit(node.body)
-                self.exit_scope()
+                # self.exit_scope()
 
             case "For":
-                self.enter_scope()
+                # self.enter_scope()
                 self.visit(node.init)
                 cond_type = self.visit(node.condition)
                 if cond_type != 'bool':
                     raise TypeError("Condition must be of type 'bool'")
                 self.visit(node.increment)
                 self.visit(node.body)
-                self.exit_scope()
+                # self.exit_scope()
 
             case "Print":
                 for val in node.values:
@@ -199,41 +213,148 @@ class TypeChecker:
             
             case "ArrayAccess":
                 array_type = self.visit(node.array)
-                
-                # Ensure it is an array type
-                if "[]" not in array_type:
-                    raise TypeError(f"Cannot index non-array type {array_type}")
 
-                # Extract the element type (e.g., "int[]" → "int")
-                element_type = array_type.replace("[]", "")
+                # ───── 1. string  ────────────────────────────────────────
+                if array_type == "string":
+                    idx_t = self.visit(node.index)
+                    if idx_t != "int":
+                        raise TypeError("String index must be int")
+                    return "string"  # or "char"
 
-                # Ensure the index is an integer
-                index_type = self.visit(node.index)
-                if index_type != "int":
-                    raise TypeError(f"Array index must be of type int, but got {index_type}")
+                # ───── 2. ordinary array (int[][] etc.) ──────────────────
+                if array_type.endswith("[]"):
+                    idx_t = self.visit(node.index)
+                    if idx_t != "int":
+                        raise TypeError("Array index must be int")
+                    return array_type[:-2]  # drop one “[]”
 
-                return element_type  
+                # ───── 3. hashmap<key,value> ─────────────────────────────
+                if array_type.startswith("hashmap<"):
+                    try:
+                        key_t, val_t = [x.strip() for x in array_type[8:-1].split(",")]
+                    except ValueError:
+                        raise TypeError(f"Invalid hashmap type format: {array_type}")
+                    idx_t = self.visit(node.index)
+                    if idx_t != key_t:
+                        raise TypeError(f"Hashmap key must be {key_t}, got {idx_t}")
+                    return val_t
+
+                # ───── 4. invalid index access ──────────────────────────
+                raise TypeError(f"Cannot index non-array type {array_type}") 
+
+           
+            case "ArrayAppend":
+                container_type = self.visit(node.array)
+
+                # Array append
+                if "[]" in container_type:
+                    element_type = container_type.replace("[]", "")
+                    value_type = self.visit(node.value)
+
+                    if value_type != element_type:
+                        raise TypeError(f"Cannot append value of type {value_type} to array of {element_type}")
+
+                    return container_type
             
+            case "ArrayDelete":
+                collection_type = self.visit(node.array)
+
+                if node.index is None:          # delete on arr[i][j] chain
+                    if "[]" not in collection_type:
+                        raise TypeError("delete() can only be used on arrays")
+                    return collection_type       # OK
+
+                # single‑level delete (your existing logic)
+                if "[]" in collection_type:
+                    idx_type = self.visit(node.index)
+                    if idx_type != "int":
+                        raise TypeError("Array index must be int")
+                    return collection_type
+
+
             case "ArrayAssignment":
-                array_type = self.visit(node.array)
+                # ───  new multi‑index form  arr[0][1] = val  ────────────
+                if node.index is None and isinstance(node.array, ArrayAccess):
+                    # Walk down the ArrayAccess chain to find the leaf type
+                    elem_type = self.visit(node.array)
+                    val_type  = self.visit(node.value)
+                    if elem_type != val_type and val_type != "undefined":
+                        raise TypeError(
+                            f"Type mismatch: array element expects {elem_type}, got {val_type}"
+                        )
+                    return val_type
+
+                # ─── original single‑index form  arr[i] = val  ──────────
+                collection_type = self.visit(node.array)
+
+                if "[]" in collection_type:              # simple array
+                    element_type = collection_type[:-2]  # drop one “[]”
+
+                    index_type = self.visit(node.index)
+                    if index_type != "int":
+                        raise TypeError("Array index must be int")
+
+                    value_type = self.visit(node.value)
+                    if value_type != element_type and value_type != "undefined":
+                        raise TypeError(
+                            f"Type mismatch: array expects {element_type}, got {value_type}"
+                        )
+                    return value_type
+
+                # Hashmap case
+                elif collection_type.startswith("hashmap<"):
+                    key_type_expected, value_type_expected = collection_type[8:-1].split(",")
+
+                    index_type = self.visit(node.index)
+                    if index_type.strip() != key_type_expected.strip():
+                        raise TypeError(f"Hashmap key must be of type {key_type_expected}, but got {index_type}")
+
+                    value_type = self.visit(node.value)
+                    if value_type.strip() != value_type_expected.strip():
+                        raise TypeError(f"Type mismatch: hashmap expects {value_type_expected}, but got {value_type}")
+
+                    return value_type
                 
-                if "[]" not in array_type:
-                    raise TypeError(f"Cannot assign to non-array type {array_type}")
+                elif collection_type == "string":
+                    index_type = self.visit(node.index)
+                    if index_type != "int":
+                        raise TypeError(f"String index must be of type int, but got {index_type}")
 
-                element_type = array_type.replace("[]", "")
+                    value_type = self.visit(node.value)
+                    if value_type != "string":
+                        raise TypeError(f"Type mismatch: string expects string, but got {value_type}")
 
-                index_type = self.visit(node.index)
-                if index_type != "int":
-                    raise TypeError(f"Array index must be of type int, but got {index_type}")
+                    return value_type
 
-                value_type = self.visit(node.value)
-                if value_type != element_type:
-                    raise TypeError(f"Type mismatch: array '{node.array.val}' expects {element_type}, but got {value_type}")
+                else:
+                    raise TypeError(f"Cannot assign to non-array/hashmap type {collection_type}")
 
-                return value_type  
+            
+            case "ArrayLength":
+                collection_type = self.visit(node.array)
+
+                if "[]" in collection_type or collection_type == "string":
+                    return "int"
+
+                elif collection_type.startswith("hashmap<"):
+                    return "int"
+
+                else:
+                    raise TypeError(f"Cannot get length of non-array/hashmap type {collection_type}")
+
 
             case "Parenthesis":
                 return self.visit(node.expr)
+            
+            case "HashMap":
+                index_type = node.index_type
+                value_type = node.value_type
 
+                if index_type not in ('int', 'string', 'float', 'bool'):
+                    raise TypeError(f"Invalid key type {index_type} for hashmap; only int, string, float, bool are allowed")
+                self.declare_variable(node.name, f"hashmap<{index_type}, {value_type}>")
+
+                return f"hashmap<{index_type}, {value_type}>"
+            
             case _:
                 pass

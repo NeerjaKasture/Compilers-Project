@@ -9,25 +9,55 @@ def is_array_type(type_str: str) -> bool:
 def get_base_type(type_str: str) -> str:
     return type_str[:-2] if is_array_type(type_str) else type_str
 
+class Stack:
+    def __init__(self):
+        self.items = []
+    
+    def push(self, item):
+        self.items.append(item)
+    
+    def pop(self):
+        if not self.items:
+            raise RuntimeError("Stack underflow")
+        self.items.pop()
+    
+    def top(self):
+        if not self.items:
+            raise RuntimeError("Stack is empty")
+        return self.items[-1]
+    
+class Queue:
+    def __init__(self):
+        self.items = []
+    
+    def push(self, item):
+        self.items.append(item)
+    
+    def pop(self):
+        if not self.items:
+            raise RuntimeError("Queue underflow")
+        return self.items.pop(0)  # Remove and return first element
+    
+    def first(self):
+        if not self.items:
+            raise RuntimeError("Queue is empty")
+        return self.items[0]  # Return first element without removing it
+
 MAX_RECURSION_DEPTH = 1000
 def e(tree: AST, env={}, types={}, call_stack=[]):
-
     match tree:
-        case Input(inp_type):
-            try:
-                user_input = input()
-                match inp_type:
-                    case "int":
-                        return int(user_input)
-                    case "float":
-                        return float(user_input)
-                    case "string":
-                        return str(user_input)
-                    case _:
-                        raise TypeError(f"Unsupported input type: {inp_type}")
-            except ValueError as ve:
-                print(f"Invalid input for type {inp_type}: {ve}")
-                return None
+        case Input():
+            word = input()
+            if word == "nocap":
+                return True
+            elif word == "cap":
+                return False
+            elif word.count('.') == 1 and word.replace('.', '').isdigit():
+                    return float(word)
+            elif word.isdigit():
+                return int(word)
+            else:
+                return word           
             
         case Variable(v):
             if call_stack:    
@@ -63,8 +93,12 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
             for (param_type, param_name), arg in zip(func.params, args):
                 arg_value = e(arg, local_env, local_types)
                 
-                if not isinstance(arg_value, datatypes[param_type]):
-                    raise TypeError(f"Argument '{param_name}' must be of type {param_type}")
+                if param_type == "fn":
+                    if not isinstance(arg_value, Function):
+                        raise TypeError(f"Argument '{param_name}' must be a function")
+                else:
+                    if not isinstance(arg_value, datatypes[param_type]):
+                        raise TypeError(f"Argument '{param_name}' must be of type {param_type}")
 
                 local_env[param_name] = arg_value
                 local_types[param_name] = param_type 
@@ -74,9 +108,14 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
                 raise RecursionLimitError(name)
             result = e(func.body, local_env, local_types,call_stack)
             result=e(result)
-            if func.return_type != "void" and not isinstance(result, datatypes[func.return_type]):
-                raise TypeError(f"Function '{name}' must return a value of type {func.return_type}, but got {type(result).__name__}")
-
+            if func.return_type != "void":
+                if func.return_type == "fn":
+                    if not isinstance(result, Function):
+                        raise TypeError(f"Function '{name}' must return a function, but got {type(result).__name__}")
+                else:
+                    if not isinstance(result, datatypes[func.return_type]):
+                        raise TypeError(f"Function '{name}' must return a value of type {func.return_type}, but got {type(result).__name__}")
+                
             call_stack.pop()
 
             return result
@@ -104,7 +143,7 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
                 return int(v)
         case BinOp(op, l, r):
             if isinstance(e(l), bool) or isinstance(e(r), bool):
-                if op in {"+", "-", "*", "/", "^","<",">","<=",">=","&","|","~~"}:
+                if op in {"%","+", "-", "*", "/", "^","<",">","<=",">=","&","|","~~","//"}:
                     raise TypeError(f"Cannot apply '{op}' to Boolean type")
                 match op:
                     case "and":
@@ -114,15 +153,11 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
                     case "not":
                         return not e(r)
             if isinstance(e(l), str) or isinstance(e(r), str):
-                if op in {"+", "-", "*", "/", "^","<",">","<=",">=","&","|","~~"}:
+                if op in {"%","+", "-", "*", "/", "^","<",">","<=",">=","&","|","~~","//"}:
                     raise TypeError(f"Cannot apply '{op}' to String type")  
             match op:
                 case "+":
-                    left_val = e(l)
-                    right_val = e(r)
-                    if not (isinstance(left_val, (int, float)) and isinstance(right_val, (int, float))):
-                        raise TypeError("Addition (+) is only supported between numbers (int/float)")
-                    return left_val + right_val
+                    return e(l) + e(r)
                 case "-":
                     return e(l) - e(r)
                 case "*":
@@ -131,12 +166,20 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
                     if e(r) == 0:
                         raise ZeroDivisionError("Division by zero")
                     return e(l) / e(r)
+                case  "%":
+                    if e(r) == 0:
+                        raise ZeroDivisionError("Division by zero")
+                    return e(l) % e(r)
                 case "^":
                     return e(l) ** e(r)
                 case "<":
                     return e(l) < e(r)
                 case ">":
                     return e(l) > e(r)
+                case "<=":
+                    return e(l) <= e(r)
+                case ">=":
+                    return e(l) >= e(r)
                 case "==":
                     return e(l) == e(r)
                 case "!=":
@@ -147,6 +190,10 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
                     return e(l) | e(r)
                 case "~~":  # Bitwise NOT (unary)
                     return ~e(r)  # Only use `left`, `right` is None
+                case "//":  # Floor division
+                    if e(r) == 0:
+                        raise ZeroDivisionError("Division by zero")
+                    return e(l) // e(r)
         case Cond(If, Elif, Else):
             if e(If[0]):
                 
@@ -166,39 +213,66 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
             return None
         
         case Declaration(var_type, var_name, value):
-            val = e(value, env, types)
-            if val is None:  # Handle failed input
+            local_env = env
+            local_types = types
+            if call_stack:
+                local_env, local_types = call_stack[-1]
+
+            val = e(value, local_env, local_types)
+            if val is None:
                 raise ValueError(f"Failed to get valid input for {var_name}")
+
             if is_array_type(var_type):
                 if not isinstance(val, list):
                     raise TypeError(f"Variable '{var_name}' must be of type {var_type}")
-                # Check that all elements are of the base type
+                base_type_str = get_base_type(var_type)
+                if base_type_str == "fn":
+                    if not all(isinstance(x, Function) for x in val):
+                        raise TypeError(f"All elements in array '{var_name}' must be functions")
+                else:
+                    base_type = datatypes[base_type_str]
+                    if not all(isinstance(x, base_type) for x in val):
+                        raise TypeError(f"All elements in array '{var_name}' must be of type {base_type_str}")
+
+            elif var_type == "fn":
+                if not isinstance(val, Function):
+                    raise TypeError(f"Variable '{var_name}' must be a function")
+            else:
+                if not isinstance(val, datatypes[var_type]):
+                    raise TypeError(f"Variable '{var_name}' must be of type {var_type}")
+
+            local_env[var_name] = val
+            local_types[var_name] = var_type  # Keep string type info
+            return
+
+        case Assignment(var_name, value):
+            local_env = env
+            local_types = types
+            if call_stack:
+                local_env, local_types = call_stack[-1]
+
+            if var_name not in local_env:
+                raise NameError(f"Undefined variable: {var_name}")
+
+            val = e(value, local_env, local_types)
+            var_type = local_types[var_name]
+
+            if is_array_type(var_type):
+                if not isinstance(val, list):
+                    raise TypeError(f"Variable '{var_name}' must be of type {var_type}")
                 base_type = datatypes[get_base_type(var_type)]
                 if not all(isinstance(x, base_type) for x in val):
                     raise TypeError(f"All elements in array '{var_name}' must be of type {get_base_type(var_type)}")
-            elif not isinstance(val, datatypes[var_type]):
-                \
-                raise TypeError(f"Variable '{var_name}' must be of type {var_type}")
+            elif var_type == "fn":
+                if not isinstance(val, Function):
+                    raise TypeError(f"Variable '{var_name}' must be a function")
+            else:
+                if not isinstance(val, datatypes[var_type]):
+                    raise TypeError(f"Variable '{var_name}' must be of type {var_type}")
 
-            env[var_name] = val
+            local_env[var_name] = val
+            return
 
-            # is this ok to store type of python itself and not a string?
-            types[var_name] = var_type
-
-
-            return 
-        
-        case Assignment(var_name, value):
-            if var_name not in env:
-                raise NameError(f"Undefined variable: {var_name}")
-
-            val = e(value, env, types)
-
-            if not isinstance(val, datatypes[types[var_name]]):
-                raise TypeError(f"Variable '{var_name}' must be of type {types[var_name]}")
-
-            env[var_name] = val
-            return 
         
         case While(condition, body):
             while e(condition, env, types):
@@ -264,9 +338,9 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
                 if isinstance(last_value,Return):
                     return last_value
                 elif isinstance(stmt, Return):
-                    return stmt  
-                
+                    return stmt       
             return last_value
+        
         case Break():
             return "break"
 
@@ -283,54 +357,181 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
                 raise TypeError("Concat can only be used with String")
 
             return left_val + right_val 
+        
         case Print(values):
             results = []
             for value in values:
                 result = e(value, env, types)
                 if isinstance(result, bool): 
                     result = "nocap" if result else "cap"
+                elif isinstance(result, int) and result < 0:
+                    result = "~" + str(-result)
                 results.append(result)
-            # print(*results)  # This will print the values
-            print("".join(map(str, results))) # this will print the values without adding extra space while printing
+            # print(*results) 
+            print("".join(map(str, results)))
             return None
             # results = [e(value, env, types) for value in values]
             # print(*results)  # Changed to use default print behavior with newline
-            # return None
+           
         case Array(elements):
-            return [e(element, env, types) for element in elements]
+            return [e(element, env, types) for element in elements]            
         case ArrayAccess(array, index):
             array_val = e(array, env, types)
             index_val = e(index, env, types)
-            if not isinstance(array_val, list):
-                raise TypeError("Array access can only be used with arrays")
+            if not isinstance(array_val, (list,str,dict)):
+                raise TypeError(f"Indexing cannot be used with type {type(array_val).__name__}")
             return array_val[index_val]
+        
         case ArrayAssignment(array, index, value):
-            array_val = e(array, env, types)
-            index_val = e(index, env, types)
-            value_val = e(value, env, types)
-            if not isinstance(array_val, list):
-                raise TypeError("Array assignment can only be used with arrays")
-            array_val[index_val] = value_val
-            return value_val
-        case ArrayAppend(array, value):
-            array_name = array.val  # Get the variable name
-            if array_name in env and isinstance(env[array_name], list):
-                env[array_name].append(e(value, env, types))  # Append the new value
-                return env[array_name]  # Return the updated array
-            else:
-                raise TypeError(f"Cannot append to non-array type: {array_name}")
-        case ArrayDelete(array, index):
-            array_name = array.val  # Get the variable name
-            if array_name in env and isinstance(env[array_name], list):
-                index_val = e(index, env, types)  # Evaluate the index
-                if not isinstance(index_val, int):
-                    raise TypeError(f"Array index must be an integer, got {type(index_val).__name__}")
-                if index_val < 0 or index_val >= len(env[array_name]):
-                    raise IndexError(f"Index {index_val} out of bounds for array '{array_name}'")
-                
-                del env[array_name][index_val]  # Remove the element at index
-                return env[array_name]  # Return updated array
-            else:
-                raise TypeError(f"Cannot delete from non-array type: {array_name}")
+            # ── multi‑index form  arr[0][1] = rhs  (index is None) ─────────
+            if index is None and isinstance(array, ArrayAccess):
+                idx_asts: list[AST] = []
+                node = array
+                while isinstance(node, ArrayAccess):
+                    idx_asts.insert(0, node.index)
+                    node = node.array              # walk up
+                if not isinstance(node, Variable):
+                    raise RuntimeError("Invalid assignment target")
 
+                # base collection
+                col = e(node, env, types)
+                if not isinstance(col, (list, dict)):
+                    raise TypeError("Left side must be array or hashmap")
+
+                # walk down to parent container
+                for idx_ast in idx_asts[:-1]:
+                    col = col[e(idx_ast, env, types)]
+                    if not isinstance(col, (list, dict)):
+                        raise TypeError("Intermediate element is not a collection")
+
+                last_idx = e(idx_asts[-1], env, types)
+                col[last_idx] = e(value, env, types)
+                return col[last_idx]
+
+            # ── single‑level form  arr[i] = rhs  or  map[key] = rhs ───────
+            col   = e(array, env, types)
+            key   = e(index, env, types)
+            val   = e(value, env, types)
+
+            if isinstance(col, list):
+                if not isinstance(key, int):
+                    raise TypeError("Array index must be an integer")
+                if key < 0 or key >= len(col):
+                    raise IndexError(f"Index {key} out of bounds")
+            elif not isinstance(col, dict):
+                raise TypeError("Assignment target is neither array nor hashmap")
+
+            col[key] = val
+            return val
+
+        case ArrayAppend(array, value):
+            arr = e(array, env, types)
+            if not isinstance(arr, list):
+                raise TypeError("append() can only be used on arrays")
+            arr.append(e(value, env, types))
+            return arr                           # return the *same list* ref
+
+        case ArrayDelete(array, index):
+            col = e(array, env, types)
+
+            if isinstance(col, list):
+                idx = e(index, env, types)
+                if not isinstance(idx, int):
+                    raise TypeError("Array index must be an integer")
+                if idx < 0 or idx >= len(col):
+                    raise IndexError(f"Index {idx} out of bounds")
+                del col[idx]
+                return col
+
+            if isinstance(col, dict):
+                key = e(index, env, types)
+                if key not in col:
+                    raise KeyError(f"Key {key} not found in hashmap")
+                del col[key]
+                return col
+
+            raise TypeError("delete() can only be used on arrays or hashmaps")
+
+        case ArrayLength(array):
+            col = e(array, env, types)
+            if isinstance(col, (list, dict)):
+                return len(col)
+            raise TypeError("len() can only be used on arrays or hashmaps")
+                    
+        case HashMap(name,key_type, value_type):
+            env[name] = {}  
+            types[name] = f"hashmap<{key_type}, {value_type}>"
+            return None     
+
+            
+        case StackDeclaration(element_type, name):
+            env[name] = Stack()  # Initialize an empty stack
+            types[name] = f"stack<{element_type}>"
+            return None
+        
+        case StackPush(stack_name, value):
+            if stack_name not in env:
+                raise NameError(f"Undefined stack: {stack_name}")
+            stack = env[stack_name]
+            if not isinstance(stack, Stack):
+                raise TypeError(f"{stack_name} is not a stack")
+            val = e(value, env, types)
+            # Get the element type from the stack type
+            element_type = types[stack_name].split('<')[1][:-1]  # Extract type between < and >
+            if not isinstance(val, datatypes[element_type]):
+                raise TypeError(f"Cannot push {type(val).__name__} to stack of {element_type}")
+            stack.push(val)
+            return None 
+        
+        case StackPop(stack_name):
+            if stack_name not in env:
+                raise NameError(f"Undefined stack: {stack_name}")
+            stack = env[stack_name]
+            if not isinstance(stack, Stack):
+                raise TypeError(f"{stack_name} is not a stack")
+            stack.pop()  
+            return None
+        
+        case StackTop(stack_name):
+            if stack_name not in env:
+                raise NameError(f"Undefined stack: {stack_name}")
+            stack = env[stack_name]
+            if not isinstance(stack, Stack):
+                raise TypeError(f"{stack_name} is not a stack")
+            return stack.top()
+        
+        case QueueDeclaration(element_type, name):
+            env[name] = Queue()  # Initialize an empty queue
+            types[name] = f"queue<{element_type}>"
+            return None
+
+        case QueuePush(queue_name, value):
+            if queue_name not in env:
+                raise NameError(f"Undefined queue: {queue_name}")
+            queue = env[queue_name]
+            if not isinstance(queue, Queue):
+                raise TypeError(f"{queue_name} is not a queue")
+            val = e(value, env, types)
+            # Get the element type from the queue type
+            element_type = types[queue_name].split('<')[1][:-1]  # Extract type between < and >
+            if not isinstance(val, datatypes[element_type]):
+                raise TypeError(f"Cannot push {type(val).__name__} to queue of {element_type}")
+            queue.push(val)
+            return None
+
+        case QueuePop(queue_name):
+            if queue_name not in env:
+                raise NameError(f"Undefined queue: {queue_name}")
+            queue = env[queue_name]
+            if not isinstance(queue, Queue):
+                raise TypeError(f"{queue_name} is not a queue")
+            return queue.pop()
+
+        case QueueFirst(queue_name):
+            if queue_name not in env:
+                raise NameError(f"Undefined queue: {queue_name}")
+            queue = env[queue_name]
+            if not isinstance(queue, Queue):
+                raise TypeError(f"{queue_name} is not a queue")
+            return queue.first()
 

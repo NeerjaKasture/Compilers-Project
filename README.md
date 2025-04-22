@@ -1,26 +1,208 @@
 # YAP
 
-## Overview
-This project implements a compiler for **YAP (Yet Another Programming Language)**, a custom programming language designed as a part of CS327 Compilers Course.
+# Overview
+
+This project implements a compiler for a custom programming language YAP (Yet Another Programming Language) designed to solve competitive programming problems. The compiler follows a structured pipeline that includes lexical analysis, parsing, type-checking and execution. It supports primitive data types like strings, integers, floats, booleans, etc., control structures, functions, arrays, and basic error handling and machine code generation.
+
+# Project Structure
 
 ```
 Compilers-Project
-│── bytecode.py        -> Generates bytecode from the parsed AST
-│── compiler.py        -> Main compiler entry point
-│── errors.py          -> Custom error handling classes
-│── evaluator.py       -> Evaluates the parsed AST
-│── keywords.py        -> Defines language keywords and data types
-│── lexer.py           -> Lexical analyzer (tokenizer)
-│── parser.py          -> Parses the token stream into an AST
-│── sample_code.txt    -> Sample programs for testing
-│── testing.txt        -> Test suite for testing
+│── compiler.py                # Main compiler entry point
+│── errors.py                    # Custom error handling classes
+│── keywords.py              # Defines language keywords and data types
+│── lexer.py                      # Lexical analyzer (tokenizer)
+│── parser.py                    # Parses the token stream into an AST
+│── typechecker.py            # Checks the parsed AST for type consistency
+│── evaluator.py               # Evaluates the parsed AST
+│── sample_code.yap        # Sample programs for testing
+│── tesing.yap                   # Test suite for testing
+│── bytecode.py              # For generation of machine code instructions
 ```
-       
 
-## Usage
+# Language Features
+
+## Core Features
+
+### Data Types
+- Primitive: `int`, `float`, `string`, `bool`
+- Composite: Arrays (`int[]`, `float[]`, `string[]`, `bool[]`), stacks, queues, functions (fn)
+
+### Operators
+- Arithmetic: `+`, `-`, `*`, `/`, `^`, `%`
+- Logical: `and`, `or`, `not`
+- Comparison: `==`, `!=`, `>`, `<`, `>=`, `<=`
+- Unary: `~` (negation)
+- Bitwise: `&`, `|`,`~~`
+
+### Control Structures
+- Conditionals: `if-elif-else`
+- Loops: `for`, `while` (supports `break` and `continue`)
+
+### Functions
+- First-class functions
+- User explicitly gives types for parameters and return value
+- Supports recursion
+
+### Input/Output
+- `spill()` for user input
+- `yap()` for output
+
+### Error Handling
+- Custom error classes: `TypeError`, `SyntaxError`, `RuntimeError`
+
+## Additional Features
+- **Function Scope Handling**: Supports function calls with argument passing
+- **Array Operations**: Array creation, indexing, length, appending, and deletion
+
+
+# Design Choices
+
+- Boolean cannot be treated as numbers and vice versa
+- Variable value is mutable, but type is not. Type is only defined at declaration, and must be redeclared to change type
+- The language is strongly typed
+- Lexical Scoping
+- First Class Functions
+- Arrays have fixed data type, variable size
+- Stack-based VM
+- Functions have user-defined return type
+- Arithmetic operators only apply to numbers - separate `concat` function for strings and arrays, different logical operators for `bool`
+- Innovative feature - bitwise `& / |`
+
+# Compilation Process
+
+## Lexical Analysis (`lexer.py`)
+
+The lexer reads the source code and converts it into a sequence of tokens. It handles:
+- Identifying keywords, variable names, numbers, strings, and symbols
+- Handling comments (`#`) - Any line starting with `#` will be treated as a comment and the lexer will skip to the next line
+- Tokenizing operators and parentheses
+
+## Parsing (`parser.py`)
+
+The parser processes the tokenized input and generates an Abstract Syntax Tree (AST). It supports:
+- Expressions (arithmetic, boolean, function calls)
+- Statements (assignments, loops, function definitions)
+- Block structures (`{}` for function bodies and control statements)
+- Ensuring correct syntax through structured parsing
+
+## Type-checking (`typechecker.py`)
+
+- Ensures type correctness by validating variables, expressions, functions, and control structures.
+- Maintains a stack of symbol tables to handle variable declarations in nested scopes.
+- Ensures correct argument types in function calls and validates return types.
+- Supports implicit type promotion for arithmetic (e.g., `int + float → float`).
+
+## Semantic Analysis & Execution (`evaluator.py`)
+
+The evaluator executes the parsed AST by:
+- Managing variable and function scopes
+- Evaluating expressions recursively
+- Executing control structures
+
+# Error Handling
+
+This is handled by `errors.py`. Custom error classes ensure that incorrect programs fail gracefully. Errors include:
+- **Syntax Errors**: Unexpected tokens, missing parentheses
+- **Type Errors**: Mismatched data types in operations
+- **Runtime Errors**: Undefined variables, division by zero, recursion limits
+
+# Machine Code Generation
+
+We define a custom instruction set, and the sequence of instructions is generated by `bytecode.py`. Currently, the generated sequence of machine code is printed directly on the terminal without conversion to a byte array.
+
+## Implementation
+
+The AssemblyGenerator converts parsed abstract syntax trees (ASTs) into bytecode for a stack-based virtual machine (VM). This VM operates using a uniform variable model, meaning all variables (integers, booleans, arrays, etc.) are treated as fixed-size values. The generator follows a stack-oriented approach, where operations consume values from the stack and push results back onto it. Variables are stored in a symbol table with memory locations. Control flow constructs such as loops and conditionals are handled via jump instructions, while arrays use indexed load and store operations. The generated bytecode is designed to be compact and efficient for interpretation.
+
+## Instruction Set
+
+- **Stack Operations**: `PUSH` (push value onto the stack), `POP` (remove value), `DUP` (duplicate top value).
+- **Arithmetic & Logic**: `ADD`, `SUB`, `MUL`, `DIV`, `POW` (power), `NEG` (negation), `CMP_LT`, `CMP_GT`, `CMP_EQ`, `CMP_NEQ`.
+- **Control Flow**: `JMP` (unconditional jump), `JZ` (jump if zero), `JNZ` (jump if nonzero), `CALL` (function call), `RETURN`.
+- **Variable Management**: `STORE` (assign value to a variable), `LOAD` (retrieve value).
+- **Array Operations**: `NEWARRAY` (allocate array), `LOAD_INDEX` (fetch element), `STORE_INDEX` (update element), `APPEND_INDEX` (append value), `DELETE_INDEX` (remove element) , `CREATE_LIST` (make an array of 'n' elements).
+- **System Calls**: `PRINT` (print value), `INPUT` (read input), `EXIT` (terminate execution).
+
+# How to Run the Code
+
+Once you’ve written your code in a `.yap` file, you can compile and execute it using the following command:
+
+```sh
+python compiler.py sample_code.yap
 ```
-python compiler.py your_code.yap
+
+Example: If `sample_code.yap` contains:
+
+```yap
+int x = 10;
+yap("Value of x:", x);
 ```
+
+You run:
+
+```sh
+python compiler.py sample_code.yap
+```
+
+Output:
+
+```
+Value of x: 10
+```
+
+For more details on writing YAP code, refer to the [User Guide](./user_guide.md).
+### Happy Coding!
+
+
+# Coverage
+
+We have made a comprehensive test suite for testing the implementation of our language. It has elaborative comments to explain the cases it is testing.
+The current test suite `testing.yap` gives **76% line coverage** and **72% branch coverage**.
+
+## Code Coverage Report
+
+### **Line Coverage**
+| Name                      | Stmts | Miss | Cover |
+|---------------------------|------:|-----:|------:|
+| errors.py                 |   67  |   23 |   66% |
+| evaluator.py              |  374  |  144 |   61% |
+| keywords.py               |    2  |    0 |  100% |
+| lexer.py                  |   97  |    0 |  100% |
+| parser.py                 |  757  |  201 |   73% |
+| tests/test_evaluator.py   |   89  |    1 |   99% |
+| tests/test_lexer.py       |   44  |    0 |  100% |
+| tests/test_parser.py      |  108  |    2 |   98% |
+| **TOTAL**                 | **1538** | **371** | **76%** |
+
+---
+
+### **Branch Coverage**
+| Name                      | Stmts | Miss | Branch | BrPart | Cover |
+|---------------------------|------:|-----:|-------:|-------:|------:|
+| errors.py                 |   67  |   23 |      2 |      0 |   64% |
+| evaluator.py              |  374  |  144 |    286 |     48 |   61% |
+| keywords.py               |    2  |    0 |      0 |      0 |  100% |
+| lexer.py                  |   97  |    0 |     46 |      0 |  100% |
+| parser.py                 |  757  |  201 |    290 |     69 |   70% |
+| tests/test_evaluator.py   |   89  |    1 |      2 |      1 |   98% |
+| tests/test_lexer.py       |   44  |    0 |      0 |      0 |  100% |
+| tests/test_parser.py      |  108  |    2 |      2 |      1 |   97% |
+| **TOTAL**                 | **1538** | **371** | **628** | **119** | **72%** |
+
+
+# Work Distribution
+
+- **Neerja** - Variables, Functions and Recursion, Strings, static typechecking, Euler problems
+- **Anura** -  Arithmetic, if-elif-else, Blocks, Loops, Recursion, bytecode and checking
+- **Saloni** - Arrays, functions to support arrays, logical operations (bitwise), testing files, coverage calculations
+- **Siri** - Input statements for the data types, Types of Errors, Test cases, stacks
+- **Srijahnavi** - `yap` statement for all data types, Arrays, Errors, Test cases
+
+Other than this, everybody has worked on testing newly implemented parts and making changes according to errors irrespective of the distribution mentioned above.
+
+
+
 
 
 
