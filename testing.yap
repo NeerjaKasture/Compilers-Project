@@ -455,6 +455,17 @@ yap(flags[1]);
 yap(flags[2]);        
 yap(flags.len()); 
 
+hashmap < int , int > flags;
+flags[1] = 0;
+flags[~2] = ~2;
+yap(flags[1]);         
+yap(flags[~2]);        
+yap(flags.len());     
+
+hashmap<int, int[]> mapper;
+mapper[0] = [1,2,3];
+yap(mapper[0][1]);
+
 yap("======== Nested Array test cases =========");
 
 int[][] m = [[1,2],[3,4]];
