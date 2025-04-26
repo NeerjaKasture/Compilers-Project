@@ -429,3 +429,27 @@ q.queuePush(3) - pushes 3 into queue
 q.queuePop()-pops the first element
 q.first() - return the first element
 ```
+
+## 10. Hashmaps
+
+#### Declaring a hashmap:
+```
+hashmap<string,string> m;
+```
+
+#### Hashmap operations:
+
+```
+m["a"] = "apple";
+m["b"] = "banana";
+yap(m["a"]);         
+yap(m["b"]);       
+yap(m.len());      
+m.delete("a");
+```
+ **Output:**
+```
+apple
+banana
+2
+```
