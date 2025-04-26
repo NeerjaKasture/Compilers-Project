@@ -39,6 +39,9 @@ class Opcode(Enum):
     FLR_DIV = 0x21
     NEWHASH = 0x22
     LEN = 0x23
+    CALL_INDIRECT = 0x24
+    IDX_GET = 0x25
+    IDX_SET = 0x26
     
 class AssemblyGenerator:
     def __init__(self):
@@ -56,7 +59,6 @@ class AssemblyGenerator:
         if isinstance(instruction, str):  # Handle labels
             self.instructions.append((f"{instruction}:",))  # Single-element tuple for labels
         else:
-            # print((self.instruction_counter, instruction.name, instruction.value), args)
             self.instructions.append(((self.instruction_counter, instruction.name, instruction.value) , args))
             self.instruction_counter += 1
 
@@ -88,20 +90,22 @@ class AssemblyGenerator:
         elif isinstance(expr, Boolean):
             self.emit(Opcode.PUSH, expr.val)
         elif isinstance(expr, Variable):
-            var_loc = self.get_var_location(expr.val)
-            
             # Check if this is a function reference
             if expr.val in self.function_table:
-                # For function references, push the function name instead of loading a value
-                self.emit(Opcode.PUSH, expr.val)
+                # Push the *label* of the function, not its name
+                func_label = self.function_table[expr.val]['label']
+                self.emit(Opcode.PUSH, func_label)
             else:
                 # For regular variables, load the value
+                var_loc = self.get_var_location(expr.val)
                 self.emit(Opcode.LOAD, var_loc)
                 
         elif isinstance(expr, Parenthesis):
             self.generate_statement(expr.expr)
         elif isinstance(expr, Input):
-            self.emit(Opcode.INPUT)  # Emit input instruction  
+            self.emit(Opcode.INPUT)  # Emit input instruction 
+        elif isinstance(expr, Array): # literal list (possibly nested)
+            self.generate_array_literal(expr) 
         elif isinstance(expr, ArrayAccess):  # Handling numbers[2]
             self.generate_array_access(expr)
         elif isinstance(expr, ArrayAppend):  # Handle appending in expressions
@@ -325,56 +329,121 @@ class AssemblyGenerator:
     def generate_declaration(self, decl):
         """Convert AST variable declarations into bytecode"""
         var_loc = self.get_var_location(decl.name)
-        print(decl.value)
         if decl.type == 'fn':
-            # For function type declarations, handle specially
-            self.generate_statement(decl.value)  # This will push the function name
-            self.emit(Opcode.STORE, var_loc)
+        # This is a function pointer / first-class function
+            if isinstance(decl.value, Variable):
+                # Variable(val='double') → find the label of 'double'
+                func_name = decl.value.val
+                func_data = self.function_table.get(func_name)
+                if not func_data:
+                    raise Exception(f"Function '{func_name}' not found")
+                func_label = func_data['label']
+                
+                # Push the function label onto the stack
+                self.emit(Opcode.PUSH, func_label)
+                
+                # Store it into the variable
+                self.emit(Opcode.STORE, var_loc)
+            else:
+                raise Exception("Function declaration must assign a function")
         elif isinstance(decl.value, Array):
-            self.emit(Opcode.NEWARRAY, decl.name)  # Allocate array space
-
-            for element in decl.value.elements:
-                self.generate_statement(element)  # Push each element onto the stack
-            
-            self.emit(Opcode.CREATE_LIST, len(decl.value.elements))  # Create list from stack items
-            self.emit(Opcode.STORE, var_loc)  # Store the array in the variable
+            self.generate_array_literal(decl.value)
+            self.emit(Opcode.STORE, var_loc)
         else:
             self.generate_statement(decl.value)
             self.emit(Opcode.STORE, var_loc)
 
-    def generate_array_access(self, array_access):
-        """Handles array indexing (arr[i])"""
-        var_loc = self.get_var_location(array_access.array.val)  
-        self.generate_statement(array_access.index)  # Push index onto stack
-        self.emit(Opcode.LOAD_INDEX, var_loc)  # Load element from array
+    def generate_array_literal(self, array_node: Array):
+        self.emit(Opcode.NEWARRAY, "tmp")          # allocate list object
+        for element in array_node.elements:
+            if isinstance(element, Array):         # nested list
+                self.generate_array_literal(element)
+            else:
+                self.generate_statement(element)   # scalar element
+        self.emit(Opcode.CREATE_LIST, len(array_node.elements))
 
-    def generate_array_store(self, array_store):
-        """Handles writing to an array (arr[i] = value)"""
-        var_loc = self.get_var_location(array_store.array.val)
+    def generate_array_access(self, node):
+        """
+        Handles               arr[i][j]    map["k"]
+        Pushes the fetched value onto the stack.
+        """
+        # ─── Unroll the access chain to collect base var + indices ──────
+        indices = []
+        base = node
+        while isinstance(base, ArrayAccess):
+            indices.insert(0, base.index)      # outermost first
+            base = base.array                  # walk inwards
+
+        if not isinstance(base, Variable):
+            raise ValueError("Base of ArrayAccess must be a variable")
+
+        # 1) push the base collection
+        self.emit(Opcode.LOAD, self.get_var_location(base.val))
+
+        # 2) drill down through all indices
+        for idx in indices:
+            self.generate_statement(idx)       # push index
+            self.emit(Opcode.IDX_GET)          # collection & index on stack
+
+    def generate_array_store(self, node):
+        """
+        Supports both   arr[i] = v        arr[0][1] = v      map["k"] = v
+        """
+        # ─── split into base variable, list of indices, rhs value ───────
+        indices = []
+        base = node.array
+        while isinstance(base, ArrayAccess):
+            indices.insert(0, base.index)
+            base = base.array
+        if not isinstance(base, Variable):
+            raise ValueError("Base of ArrayAssignment must be a variable")
+
+        # last single‑level assignment still arrives with node.index set
+        if node.index is not None:
+            indices.append(node.index)
+
+        # 1) push base collection
+        self.emit(Opcode.LOAD, self.get_var_location(base.val))
+
+        # 2) walk to the *parent* container of the element to be set
+        for idx in indices[:-1]:
+            self.generate_statement(idx)
+            self.emit(Opcode.IDX_GET)
+
+        # 3) push final index & rhs value, then set
+        self.generate_statement(indices[-1])   # final index
+        self.generate_statement(node.value)    # rhs
+        self.emit(Opcode.IDX_SET)
+
+    def generate_array_append(self, expr):
+        # First, generate the target array address
+        if isinstance(expr.array, ArrayAccess):
+            self.generate_statement(expr.array.array)  # Generate for 'm' (the array name)
+            self.generate_statement(expr.array.index)  # Generate for '0' (index)
+            self.emit(Opcode.IDX_GET)                  # Get m[0]
+        else:
+            self.generate_statement(expr.array)        # For a direct array variable
         
-        self.generate_statement(array_store.index)  # Push index
-        self.generate_statement(array_store.value)  # Push value
-        self.emit(Opcode.STORE_INDEX, var_loc)  # Store in array
-
-    def generate_array_append(self, append_node):
-        """Generate bytecode for appending to an array"""
-        array_loc = self.get_var_location(append_node.array.val) 
-        self.generate_statement(append_node.value)  # Then push value to append
-        self.emit(Opcode.APPEND_INDEX, array_loc)              # Append value to array
+        # Then, generate the value to append
+        self.generate_statement(expr.value)            # <-- Add this line
+        
+        # Now, perform the append operation
+        self.emit(Opcode.APPEND_INDEX)
     
     def generate_array_delete(self, delete_node):
         """Generate bytecode for deleting from an array"""
-        array_loc = self.get_var_location(delete_node.array.val)
-        self.generate_statement(delete_node.index)  # Push index to delete
-        self.emit(Opcode.DELETE_INDEX, array_loc)              # Delete element at index
+        self.generate_statement(delete_node.array)   # Push array (could be nested access too!)
+        self.generate_statement(delete_node.index)   # Push index to delete
+        self.emit(Opcode.DELETE_INDEX)               # Perform deletion
+
     def generate_array_length(self, expr):
-        """Generate bytecode for deleting from an array"""
-        array_loc = self.get_var_location(expr.array.val)
-        self.emit(Opcode.LEN, array_loc)              # length
+        """Generate bytecode for getting the length of an array"""
+        self.generate_statement(expr.array)          # Push array (could be nested access too!)
+        self.emit(Opcode.LEN)                        # Get length
+
     def print_assembly(self):
         """Print generated assembly code"""
         for line in self.instructions:
-            # print(line)
             print(line[0][0], line[0][1], line[1])
             
            
@@ -436,16 +505,25 @@ class AssemblyGenerator:
         self.emit(f"{end_func_label}:")
 
     def generate_function_call(self, call_node):
-        """Generate assembly for function call"""
+        """Generate assembly for function call (supports first-class functions)"""
         # Push arguments onto stack in order
         for arg in call_node.params:
             self.generate_statement(arg)
-        
-        # Call the function
-        self.emit(Opcode.CALL, call_node.name)
+
+        if call_node.name in self.symbol_table:
+            # Function name is a *variable* holding a function label
+            var_loc = self.get_var_location(call_node.name)
+            self.emit(Opcode.LOAD, var_loc)     # Load the label
+            self.emit(Opcode.CALL_INDIRECT)     # Call by label
+        else:
+            # Function name is a direct function (already defined)
+            if call_node.name not in self.function_table:
+                raise Exception(f"Function '{call_node.name}' not found")
+            self.emit(Opcode.CALL, call_node.name)
+
         
 # with open('bytecode_tests.txt', 'r', encoding='utf-8') as file:
-with open('sample_code.yap', 'r', encoding='utf-8') as file:
+with open('t1.yap', 'r', encoding='utf-8') as file:
         source_code = file.read()
 ast = parse(source_code)
 # print(ast)
@@ -456,7 +534,6 @@ abc, function_table = generator.generate(ast)
 # Print human-readable assembly
 # generator.print_assembly()
 vm = StackVM(abc, function_table)
-# print("ok")
 vm.run()
 
 

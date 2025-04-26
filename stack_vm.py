@@ -30,8 +30,6 @@ class StackVM:
         # print("labels", labels)
         return labels
 
-
-
     def push_env(self, size=16):
         self.env_stack.append([None] * size)
 
@@ -39,7 +37,10 @@ class StackVM:
         self.env_stack.pop()
 
     def set_var(self, index, value):
-        self.env_stack[-1][index] = value
+        env = self.env_stack[-1]
+        if index >= len(env):
+            env.extend([None] * (index - len(env) + 1))
+        env[index] = value
 
     def get_var(self, index):
         return self.env_stack[-1][index]
@@ -152,7 +153,7 @@ class StackVM:
                 func_data = self.function_table[func_name]
                 func_label = func_data['label']
                 param_count = len(func_data['params'])
-
+                # print(func_name, func_data, func_label, param_count, self.stack)
                 # Extract arguments from stack (in reverse order)
                 args_for_func = [self.stack.pop() for _ in range(param_count)][::-1]
 
@@ -172,11 +173,20 @@ class StackVM:
                 continue
 
             elif op == 0x13:  # PRINT
-                val=self.stack.pop()
-                if isinstance(val, (int, float)) and val < 0:
-                    self.print_buffer.append("~" + str(abs(val)))
-                else:
-                    self.print_buffer.append(str(val))
+                val = self.stack.pop()
+
+                def format_val(v):
+                    if isinstance(v, (int, float)):
+                        return "~" + str(abs(v)) if v < 0 else str(v)
+                    elif isinstance(v, list):
+                        return "[" + ", ".join(format_val(x) for x in v) + "]"
+                    elif isinstance(v, dict):
+                        return "{" + ", ".join(f"{format_val(k)}: {format_val(vv)}" for k, vv in v.items()) + "}"
+                    else:
+                        return str(v)
+
+                self.print_buffer.append(format_val(val))
+
                 
             elif op == 0x19: #INPUT
                 user_input = input()
@@ -206,15 +216,15 @@ class StackVM:
             
             elif op == 0x1F:  #APPEND_INDEX
                 val = self.stack.pop()
-                arr = self.get_var(args[0])
-                arr.append(val )
-                self.set_var(args[0], arr)
+                arr = self.stack.pop()
+                arr.append(val)
+                # self.set_var(args[0], arr)
             
             elif op == 0x20:  #DELETE_INDEX
                 index = self.stack.pop()
-                arr = self.get_var(args[0])
+                arr = self.stack.pop()
                 del arr[index]
-                self.set_var(args[0], arr)
+                # self.set_var(args[0], arr)
                      
             elif op == 0x15: #NEWLINE
                 print(' '.join(self.print_buffer))
@@ -224,7 +234,47 @@ class StackVM:
                 self.stack.append({})
                 
             elif op ==0x23: #LEN
-                arr = self.get_var(args[0])
-                self.stack.append(len(arr))            
-                   
+                arr = self.stack.pop()
+                self.stack.append(len(arr))
+
+            elif op == 0x24:  # CALL_INDIRECT
+                func_label = self.stack.pop()  # the label was pushed on the stack by LOAD
+
+                # You must find the function info by label!
+                # Let's find it:
+                func_name = None
+                for name, data in self.function_table.items():
+                    if data['label'] == func_label:
+                        func_name = name
+                        break
+                if func_name is None:
+                    raise Exception(f"Function label '{func_label}' not found in function_table")
+
+                func_data = self.function_table[func_name]
+                param_count = len(func_data['params'])
+                
+                # Pop parameters (just like normal CALL)
+                args_for_func = [self.stack.pop() for _ in range(param_count)][::-1]
+
+                self.call_stack.append(self.pc + 1)
+                self.push_env()
+
+                for i, val in enumerate(args_for_func):
+                    self.set_var(i, val)
+
+                self.pc = self.labels[func_label]
+                continue
+
+            elif op == 0x25:                    # IDX_GET
+                idx = self.stack.pop()
+                col = self.stack.pop()
+                self.stack.append(col[idx])
+
+            elif op == 0x26:                    # IDX_SET
+                val = self.stack.pop()
+                idx = self.stack.pop()
+                col = self.stack.pop()
+                col[idx] = val
+                self.stack.append(val)          # leave RHS on stack
+
             self.pc += 1
