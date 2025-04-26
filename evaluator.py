@@ -380,6 +380,9 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
             index_val = e(index, env, types)
             if not isinstance(array_val, (list,str,dict)):
                 raise TypeError(f"Indexing cannot be used with type {type(array_val).__name__}")
+            if isinstance(array_val,dict):
+                if index_val not in array_val:
+                    return "None"
             return array_val[index_val]
         
         case ArrayAssignment(array, index, value):
@@ -454,7 +457,7 @@ def e(tree: AST, env={}, types={}, call_stack=[]):
 
         case ArrayLength(array):
             col = e(array, env, types)
-            if isinstance(col, (list, dict)):
+            if isinstance(col, (list, dict,str)):
                 return len(col)
             raise TypeError("len() can only be used on arrays or hashmaps")
                     

@@ -325,7 +325,6 @@ class AssemblyGenerator:
     def generate_declaration(self, decl):
         """Convert AST variable declarations into bytecode"""
         var_loc = self.get_var_location(decl.name)
-        print(decl.value)
         if decl.type == 'fn':
             # For function type declarations, handle specially
             self.generate_statement(decl.value)  # This will push the function name
@@ -445,7 +444,7 @@ class AssemblyGenerator:
         self.emit(Opcode.CALL, call_node.name)
         
 # with open('bytecode_tests.txt', 'r', encoding='utf-8') as file:
-with open('sample_code.yap', 'r', encoding='utf-8') as file:
+with open('cp_problems/q19_22110165.yap', 'r', encoding='utf-8') as file:
         source_code = file.read()
 ast = parse(source_code)
 # print(ast)

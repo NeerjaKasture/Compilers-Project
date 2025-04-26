@@ -32,9 +32,10 @@ except IOError as e:
 # checker.visit(ast)
 try:
     ast = parse(code)
-    result = e(ast)
+    print(ast)
     checker = TypeChecker()
     checker.visit(ast)
+    result = e(ast)
 except Exception as e:
     print(f"Error : {e}")
     sys.exit(1)

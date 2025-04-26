@@ -820,12 +820,24 @@ def parse(s: str) -> AST:
                     if not isinstance(t.peek(None), TypeToken):
                         raise ParseError("Expected key type after '<'", t.peek())
                     key_type = next(t).val
+                    while isinstance(t.peek(None), ParenthesisToken) and t.peek(None).val == '[':
+                        next(t)  # consume '['
+                        if next(t) != ParenthesisToken(']'):
+                            raise ParseError("Expected ']' after '[' in array type", t.peek())
+                        key_type += "[]"
                     if t.peek(None) != SymbolToken(','):
                         raise ParseError("Expected ',' after key type", t.peek())
                     next(t)  # Consume ','
                     if not isinstance(t.peek(None), TypeToken):
                         raise ParseError("Expected value type after ','", t.peek())
                     value_type = next(t).val
+
+                    while isinstance(t.peek(None), ParenthesisToken) and t.peek(None).val == '[':
+                        next(t)  # consume '['
+                        if next(t) != ParenthesisToken(']'):
+                            raise ParseError("Expected ']' after '[' in array type", t.peek())
+                        value_type += "[]"
+
                     if t.peek(None) != OperatorToken('>'):
                         raise ParseError("Expected closing '>' ", t.peek())
                     next(t)  # Consume '>'
@@ -833,8 +845,10 @@ def parse(s: str) -> AST:
                     if not isinstance(t.peek(None), VariableToken):
                         raise ParseError("Expected hashmap name after '>'", t.peek())
                     hashmap_name = next(t).val
+
                     if hashmap_name in keywords:
                         raise InvalidVariableNameError(hashmap_name)
+
                     if t.peek(None) != SymbolToken(";"):
                         raise ParseError("Expected ';' after hashmap declaration", t.peek())
                     
