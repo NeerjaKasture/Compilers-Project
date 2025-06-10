@@ -61,7 +61,7 @@ Compilers-Project
 - Boolean cannot be treated as numbers and vice versa
 - Variable value is mutable, but type is not. Type is only defined at declaration, and must be redeclared to change type
 - The language is strongly typed
-- Lexical Scoping
+- Dynamically Scoping
 - First Class Functions
 - Arrays have fixed data type, variable size
 - Stack-based VM
